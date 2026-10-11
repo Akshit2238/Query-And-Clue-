@@ -379,25 +379,65 @@ function initTabs() {
     });
 }
 
-// SQL Query History & Save
+// SQL Query History Window
 function initQueryHistory() {
     const btnHistory = document.getElementById('btnViewHistory');
+    const btnClear = document.getElementById('btnClearHistory');
+    const container = document.getElementById('historyListContainer');
     const sqlInput = document.getElementById('sqlQuery');
-    if (btnHistory && sqlInput) {
+
+    const renderHistory = () => {
+        if (!container) return;
+        let history = JSON.parse(localStorage.getItem('qc_query_history') || '[]');
+        if (!history.length) {
+            history = [
+                'SELECT suspect_id, name, occupation FROM suspects WHERE case_id = 1;',
+                'SELECT * FROM evidence WHERE case_id = 1;',
+                'SELECT * FROM access_logs WHERE case_id = 1;'
+            ];
+        }
+
+        container.innerHTML = '';
+        history.forEach((query, idx) => {
+            const card = document.createElement('div');
+            card.style.cssText = 'padding:6px 8px; border:1px solid #cbd5e1; background:#f8fafc; display:flex; justify-content:space-between; align-items:center; gap:8px; border-radius:2px;';
+            card.innerHTML = `
+                <div style="flex:1; overflow:hidden;">
+                    <div style="font-size:10px; color:#64748b; font-weight:bold; margin-bottom:2px;">Query #${idx + 1}</div>
+                    <code style="font-family:monospace; font-size:11px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">${esc(query)}</code>
+                </div>
+                <button class="retro-btn btn-load-query" style="font-size:11px; padding:2px 10px; min-width:54px; font-weight:bold;">Load</button>
+            `;
+
+            card.querySelector('.btn-load-query').addEventListener('click', () => {
+                if (sqlInput) {
+                    sqlInput.value = query;
+                    if (typeof tabState !== 'undefined' && tabState[currentTabName]) {
+                        tabState[currentTabName].query = query;
+                    }
+                }
+                const winHistory = document.getElementById('win-history');
+                if (winHistory) winHistory.classList.add('hidden');
+                openWindow('win-search');
+                sqlInput.focus();
+            });
+
+            container.appendChild(card);
+        });
+    };
+
+    if (btnHistory) {
         btnHistory.addEventListener('click', () => {
-            let history = JSON.parse(localStorage.getItem('qc_query_history') || '[]');
-            if (!history.length) {
-                history = [
-                    'SELECT suspect_id, name, occupation FROM suspects WHERE case_id = 1;',
-                    'SELECT * FROM evidence WHERE case_id = 1;',
-                    'SELECT * FROM crime_scenes WHERE case_id = 1;'
-                ];
-            }
-            const queryList = history.map((q, i) => `${i + 1}: ${q}`).join('\n');
-            const choice = prompt(`Recent Query History:\nEnter number to load into editor:\n\n${queryList}`, '1');
-            if (choice) {
-                const idx = parseInt(choice, 10) - 1;
-                if (history[idx]) sqlInput.value = history[idx];
+            renderHistory();
+            openWindow('win-history');
+        });
+    }
+
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            if (confirm('Clear all saved query history?')) {
+                localStorage.removeItem('qc_query_history');
+                renderHistory();
             }
         });
     }

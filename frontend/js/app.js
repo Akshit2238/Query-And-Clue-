@@ -13,6 +13,7 @@ async function apiFetch(endpoint, options) {
 }
 
 let caseId = parseInt(localStorage.getItem('qc_active_case') || '1', 10);
+let cachedCasesList = [];
 if (!window.highestZ) window.highestZ = 100;
 
 // =========================================
@@ -533,7 +534,12 @@ async function loadCaseContext(id) {
         const res = await apiFetch(`/cases/${caseId}`);
         if (!res.ok) throw new Error(`Case ${caseId} not found`);
         caseData = await res.json();
-        if (caseLabel) caseLabel.textContent = `Case #${caseId}: ${caseData.title}`;
+        let displayNum = caseId;
+        if (Array.isArray(cachedCasesList) && cachedCasesList.length > 0) {
+            const idx = cachedCasesList.findIndex(c => Number(c.caseId) === Number(caseId));
+            if (idx >= 0) displayNum = idx + 1;
+        }
+        if (caseLabel) caseLabel.textContent = `Case #${displayNum}: ${caseData.title}`;
     } catch (e) {
         console.warn('Could not load case metadata:', e.message);
     }
@@ -845,14 +851,16 @@ async function loadCaseList() {
             return;
         }
 
+        cachedCasesList = cases;
         caseGrid.innerHTML = '';
-        cases.forEach(c => {
+        cases.forEach((c, index) => {
             const div = document.createElement('div');
             div.style.cssText = 'padding:8px 10px;border:1px solid var(--win-border-dark);background:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
             const isCurrent = Number(c.caseId) === Number(caseId);
+            const displayNum = index + 1;
             div.innerHTML = `
                 <div>
-                    <strong>Case #${c.caseId}: ${esc(c.title)}</strong>
+                    <strong>Case #${displayNum}: ${esc(c.title)}</strong>
                     <div style="font-size:10px;color:#555;margin-top:2px;">${esc(c.difficulty || 'Normal')} · ${esc(c.crimeType || '')}</div>
                 </div>
                 <button class="retro-btn btn-select-case" data-case-id="${c.caseId}" style="font-size:11px;padding:3px 12px;min-width:68px;font-weight:${isCurrent ? 'bold' : 'normal'};" ${isCurrent ? 'disabled' : ''}>
@@ -861,6 +869,16 @@ async function loadCaseList() {
             `;
             caseGrid.appendChild(div);
         });
+
+        // Update active case label with sequential number if available
+        const currentActive = cases.find(c => Number(c.caseId) === Number(caseId));
+        if (currentActive) {
+            const activeIndex = cases.indexOf(currentActive) + 1;
+            const caseLabel = document.getElementById('activeCaseLabel');
+            if (caseLabel && currentActive.title) {
+                caseLabel.textContent = `Case #${activeIndex}: ${currentActive.title}`;
+            }
+        }
 
         // Event delegation on caseGrid ensures clicks always trigger
         caseGrid.onclick = (e) => {

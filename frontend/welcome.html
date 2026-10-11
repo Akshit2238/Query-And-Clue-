@@ -5,6 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Query &amp; Clue — Select Chapter</title>
+    <script>
+        if (!localStorage.getItem('qc_detective_name')) {
+            window.location.replace('login.html');
+        }
+    </script>
     <script src="js/config.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -263,6 +268,10 @@
         <div class="dialog-body">
             <div class="dialog-header">⚠ CASE FILE SELECTION</div>
             <div class="dialog-subtitle">Choose an active investigation to begin your shift. Double-click to preview.</div>
+            <div style="font-size: 11px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; background: #e2e8f0; padding: 4px 8px; border: 1px solid #94a3b8;">
+                <span>Active Badge: <strong id="welcomeOfficerName">Detective</strong></span>
+                <a href="login.html" onclick="localStorage.removeItem('qc_detective_name'); sessionStorage.removeItem('qc_entered');" style="color: #000080; text-decoration: underline; cursor: pointer; font-size: 10px;">Switch User</a>
+            </div>
 
             <div class="chapter-list" id="chapterList">
                 <div class="chapter-loading" id="chapterLoading">Loading case files...</div>
@@ -477,6 +486,12 @@
                 }
             }
         });
+
+        // Display active detective
+        const officerName = localStorage.getItem('qc_detective_name') || 'Guest Detective';
+        const officerAvatar = localStorage.getItem('qc_detective_avatar') || '🕵️';
+        const officerEl = document.getElementById('welcomeOfficerName');
+        if (officerEl) officerEl.textContent = `${officerAvatar} ${officerName}`;
 
         loadCases();
     </script>

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log on to Query and Clue — Minor Crimes OS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: "Tahoma", "Segoe UI", sans-serif;
+            user-select: none;
+            background: #002277;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Windows XP Top Banner */
+        .xp-top-band {
+            height: 64px;
+            background: linear-gradient(180deg, #001f66 0%, #003399 70%, #0a44bb 100%);
+            border-bottom: 2px solid #ff9900;
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        .xp-top-band .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #ffffff;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #e11d48, #2563eb);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 1px 1px 4px rgba(0,0,0,0.4);
+        }
+
+        .brand-title {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: #93c5fd;
+            margin-top: 2px;
+        }
+
+        /* Center Content Area */
+        .xp-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: radial-gradient(circle at 50% 50%, #003db8 0%, #00257a 65%, #001855 100%);
+            position: relative;
+        }
+
+        .logon-container {
+            display: flex;
+            width: 820px;
+            max-width: 95vw;
+            min-height: 340px;
+            align-items: stretch;
+        }
+
+        /* Left Column: Instructions */
+        .logon-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            padding-right: 40px;
+            text-align: right;
+            border-right: 1px solid rgba(255,255,255,0.25);
+            box-shadow: 1px 0 0 rgba(0,0,0,0.3);
+        }
+
+        .logon-left h1 {
+            color: #ffffff;
+            font-size: 26px;
+            font-weight: 300;
+            text-shadow: 1px 2px 4px rgba(0,0,0,0.6);
+            line-height: 1.2;
+            margin-bottom: 8px;
+        }
+
+        .logon-left p {
+            color: #bfdbfe;
+            font-size: 13px;
+            max-width: 280px;
+            line-height: 1.5;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        /* Right Column: User Accounts */
+        .logon-right {
+            flex: 1.3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-left: 40px;
+            gap: 20px;
+        }
+
+        /* User Card */
+        .user-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+
+        .user-card:hover, .user-card.active {
+            background: rgba(255,255,255,0.14);
+            border-color: rgba(255,165,0,0.7);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+        }
+
+        .avatar-box {
+            width: 58px;
+            height: 58px;
+            border-radius: 6px;
+            background: #fff;
+            border: 2px solid #ffaa00;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            box-shadow: inset 0 0 6px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .avatar-box:hover::after {
+            content: 'change';
+            position: absolute;
+            bottom: -16px;
+            font-size: 9px;
+            color: #fef08a;
+            font-family: monospace;
+        }
+
+        .user-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .user-name-title {
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .user-role-sub {
+            color: #93c5fd;
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+
+        .login-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .detective-input {
+            background: #ffffff;
+            border: 2px solid #002277;
+            border-radius: 3px;
+            padding: 5px 8px;
+            font-size: 13px;
+            font-family: inherit;
+            color: #000;
+            width: 190px;
+            outline: none;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .detective-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.4);
+        }
+
+        .btn-logon-arrow {
+            width: 32px;
+            height: 28px;
+            background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+            border: 1px solid #14532d;
+            border-radius: 4px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+        }
+
+        .btn-logon-arrow:hover {
+            background: linear-gradient(180deg, #4ade80 0%, #15803d 100%);
+            transform: scale(1.05);
+        }
+
+        /* Avatar Picker Popover */
+        .avatar-picker {
+            display: none;
+            gap: 6px;
+            background: #ffffff;
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #000;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+            margin-top: 6px;
+        }
+
+        .avatar-picker.open {
+            display: flex;
+        }
+
+        .avatar-choice {
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 3px;
+            transition: background 0.1s;
+        }
+
+        .avatar-choice:hover {
+            background: #bfdbfe;
+        }
+
+        /* Guest Card */
+        .guest-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 1px dashed rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .guest-card:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: #60a5fa;
+        }
+
+        .guest-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 6px;
+            background: #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            border: 2px solid #94a3b8;
+        }
+
+        /* Bottom Band */
+        .xp-bottom-band {
+            height: 64px;
+            background: linear-gradient(180deg, #001a55 0%, #001133 100%);
+            border-top: 2px solid #ff9900;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.4);
+        }
+
+        .turn-off-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+
+        .turn-off-btn:hover {
+            background: rgba(255,255,255,0.12);
+        }
+
+        .turn-off-icon {
+            width: 26px;
+            height: 26px;
+            background: #ef4444;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .tip-text {
+            color: #94a3b8;
+            font-size: 11px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP HEADER -->
+    <header class="xp-top-band">
+        <div class="brand">
+            <div class="brand-icon">🕵️</div>
+            <div>
+                <div class="brand-title">Query &amp; Clue</div>
+                <div class="brand-sub">Minor Crimes OS — Detective Workstation</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN BODY -->
+    <main class="xp-main">
+        <div class="logon-container">
+            <!-- Left: Prompt -->
+            <div class="logon-left">
+                <h1>Log on to<br>Minor Crimes</h1>
+                <p>To begin investigating cases, enter your detective badge name or log in as guest.</p>
+            </div>
+
+            <!-- Right: Account Cards -->
+            <div class="logon-right">
+                <!-- Detective Account -->
+                <div class="user-card active" id="userCard">
+                    <div class="avatar-box" id="avatarDisplay" title="Click to change avatar">🕵️</div>
+                    <div class="user-details">
+                        <div class="user-name-title">Detective Badge</div>
+                        <div class="user-role-sub">Lead Forensic Investigator</div>
+
+                        <div class="login-input-row">
+                            <input type="text" id="detectiveNameInput" class="detective-input" placeholder="Enter Detective Name..." maxlength="30">
+                            <button class="btn-logon-arrow" id="btnLogon" title="Log On">➔</button>
+                        </div>
+
+                        <!-- Avatar Picker Dropdown -->
+                        <div class="avatar-picker" id="avatarPicker">
+                            <span class="avatar-choice" data-avatar="🕵️">🕵️</span>
+                            <span class="avatar-choice" data-avatar="🔍">🔍</span>
+                            <span class="avatar-choice" data-avatar="💼">💼</span>
+                            <span class="avatar-choice" data-avatar="☕">☕</span>
+                            <span class="avatar-choice" data-avatar="💻">💻</span>
+                            <span class="avatar-choice" data-avatar="🕶️">🕶️</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guest Account -->
+                <div class="guest-card" id="btnGuestLogon">
+                    <div class="guest-avatar">👤</div>
+                    <div>
+                        <div style="color:#fff;font-weight:bold;font-size:14px;">Guest Detective</div>
+                        <div style="color:#93c5fd;font-size:11px;">Instant play without saving profile name</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- BOTTOM FOOTER -->
+    <footer class="xp-bottom-band">
+        <button class="turn-off-btn" onclick="alert('Query & Clue Detective OS\n\nCreated with Spring Boot + TiDB Cloud + Vanilla JS.\nAll systems operational.');">
+            <div class="turn-off-icon">⏻</div>
+            <span>System Information</span>
+        </button>
+
+        <div class="tip-text">
+            All case progress, detective notes, and SQL history are saved locally on this terminal.
+        </div>
+    </footer>
+
+    <script>
+        let currentAvatar = localStorage.getItem('qc_detective_avatar') || '🕵️';
+        const avatarDisplay = document.getElementById('avatarDisplay');
+        const avatarPicker = document.getElementById('avatarPicker');
+        const nameInput = document.getElementById('detectiveNameInput');
+        const btnLogon = document.getElementById('btnLogon');
+        const btnGuest = document.getElementById('btnGuestLogon');
+
+        // Restore saved name
+        const savedName = localStorage.getItem('qc_detective_name') || '';
+        if (savedName && savedName !== 'Guest Detective') {
+            nameInput.value = savedName;
+        } else {
+            nameInput.value = 'Detective ' + (['Miller', 'Holmes', 'Columbo', 'Stone'][Math.floor(Math.random() * 4)]);
+        }
+        avatarDisplay.textContent = currentAvatar;
+
+        // Toggle avatar picker
+        avatarDisplay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            avatarPicker.classList.toggle('open');
+        });
+
+        document.querySelectorAll('.avatar-choice').forEach(choice => {
+            choice.addEventListener('click', (e) => {
+                e.stopPropagation();
+                currentAvatar = choice.dataset.avatar;
+                avatarDisplay.textContent = currentAvatar;
+                localStorage.setItem('qc_detective_avatar', currentAvatar);
+                avatarPicker.classList.remove('open');
+            });
+        });
+
+        document.addEventListener('click', () => {
+            avatarPicker.classList.remove('open');
+        });
+
+        function performLogon(name, avatar) {
+            const finalName = (name || '').trim() || 'Guest Detective';
+            localStorage.setItem('qc_detective_name', finalName);
+            localStorage.setItem('qc_detective_avatar', avatar || '🕵️');
+            sessionStorage.setItem('qc_entered', 'true');
+            window.location.href = 'welcome.html';
+        }
+
+        btnLogon.addEventListener('click', () => {
+            performLogon(nameInput.value, currentAvatar);
+        });
+
+        nameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                performLogon(nameInput.value, currentAvatar);
+            }
+        });
+
+        btnGuest.addEventListener('click', () => {
+            performLogon('Guest Detective', '👤');
+        });
+
+        // Focus input automatically
+        nameInput.focus();
+        nameInput.select();
+    </script>
+</body>
+</html>

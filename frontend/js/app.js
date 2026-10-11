@@ -32,6 +32,7 @@ function init() {
     initMusicPlayer();
     initSettings();
     initBrowser();
+    initDetectiveBadge();
 
     loadCaseContext(caseId);
 }
@@ -52,6 +53,16 @@ function initClock() {
     };
     update();
     setInterval(update, 1000);
+}
+
+// Detective Badge Tray Update
+function initDetectiveBadge() {
+    const name = localStorage.getItem('qc_detective_name') || 'Guest Detective';
+    const avatar = localStorage.getItem('qc_detective_avatar') || '🕵️';
+    const badgeName = document.getElementById('badgeName');
+    const badgeAvatar = document.getElementById('badgeAvatar');
+    if (badgeName) badgeName.textContent = name;
+    if (badgeAvatar) badgeAvatar.textContent = avatar;
 }
 
 // Window Focus & Bring to Front

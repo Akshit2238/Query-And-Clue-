@@ -11,7 +11,16 @@ target/
 *.tar.gz
 *.rar
 
-# IDE / System
+# Developer tooling & scratch files
+.agents/
+AGENTS.md
+tasks.md
+progress.txt
+.postman/
+postman/
+*.text
+
+# IDE & OS
 .idea/
 *.iml
 .vscode/

@@ -289,21 +289,81 @@ function initIconTriggers() {
     }
 }
 
-// SQL Query Tabs
+// SQL Query Tabs State
+let tabsInitialized = false;
+let currentTabName = 'Tab 1';
+const tabState = {
+    'Tab 1': { query: '', headHtml: '<tr><th>Status</th><th>Message</th></tr>', bodyHtml: '<tr><td>INFO</td><td>Enter a SELECT query above and click Submit.</td></tr>', statusText: 'Ready.', statusColor: '#000', execTime: '' },
+    'Tab 2': { query: '', headHtml: '<tr><th>Status</th><th>Message</th></tr>', bodyHtml: '<tr><td>INFO</td><td>Enter a SELECT query above and click Submit.</td></tr>', statusText: 'Ready.', statusColor: '#000', execTime: '' },
+    'Tab 3': { query: '', headHtml: '<tr><th>Status</th><th>Message</th></tr>', bodyHtml: '<tr><td>INFO</td><td>Enter a SELECT query above and click Submit.</td></tr>', statusText: 'Ready.', statusColor: '#000', execTime: '' },
+    'Tab 4': { query: '', headHtml: '<tr><th>Status</th><th>Message</th></tr>', bodyHtml: '<tr><td>INFO</td><td>Enter a SELECT query above and click Submit.</td></tr>', statusText: 'Ready.', statusColor: '#000', execTime: '' },
+    'Tab 5': { query: '', headHtml: '<tr><th>Status</th><th>Message</th></tr>', bodyHtml: '<tr><td>INFO</td><td>Enter a SELECT query above and click Submit.</td></tr>', statusText: 'Ready.', statusColor: '#000', execTime: '' }
+};
+
+function saveCurrentTabState() {
+    const sqlInput = document.getElementById('sqlQuery');
+    const headEl = document.getElementById('resultsHead');
+    const bodyEl = document.getElementById('resultsBody');
+    const statusEl = document.getElementById('queryStatus');
+    const timeEl = document.getElementById('executionTime');
+
+    if (!tabState[currentTabName]) {
+        tabState[currentTabName] = {};
+    }
+    if (sqlInput) tabState[currentTabName].query = sqlInput.value;
+    if (headEl) tabState[currentTabName].headHtml = headEl.innerHTML;
+    if (bodyEl) tabState[currentTabName].bodyHtml = bodyEl.innerHTML;
+    if (statusEl) {
+        tabState[currentTabName].statusText = statusEl.textContent;
+        tabState[currentTabName].statusColor = statusEl.style.color || '#000';
+    }
+    if (timeEl) tabState[currentTabName].execTime = timeEl.textContent;
+}
+
+function restoreTabState(tabName) {
+    const sqlInput = document.getElementById('sqlQuery');
+    const headEl = document.getElementById('resultsHead');
+    const bodyEl = document.getElementById('resultsBody');
+    const statusEl = document.getElementById('queryStatus');
+    const timeEl = document.getElementById('executionTime');
+
+    const state = tabState[tabName] || { query: '', headHtml: '<tr><th>Status</th><th>Message</th></tr>', bodyHtml: '<tr><td>INFO</td><td>Enter a SELECT query above and click Submit.</td></tr>', statusText: 'Ready.', statusColor: '#000', execTime: '' };
+
+    if (sqlInput) sqlInput.value = state.query || '';
+    if (headEl) headEl.innerHTML = state.headHtml || '<tr><th>Status</th><th>Message</th></tr>';
+    if (bodyEl) bodyEl.innerHTML = state.bodyHtml || '<tr><td>INFO</td><td>Enter a SELECT query above and click Submit.</td></tr>';
+    if (statusEl) {
+        statusEl.textContent = state.statusText || 'Ready.';
+        statusEl.style.color = state.statusColor || '#000';
+    }
+    if (timeEl) timeEl.textContent = state.execTime || '';
+}
+
 function initTabs() {
-    const tabQueries = {};
-    let currentTab = 'Tab 1';
+    if (tabsInitialized) return;
+    tabsInitialized = true;
 
     const sqlInput = document.getElementById('sqlQuery');
-    if (sqlInput) sqlInput.value = '';
+    if (sqlInput) {
+        sqlInput.addEventListener('input', () => {
+            if (tabState[currentTabName]) {
+                tabState[currentTabName].query = sqlInput.value;
+            }
+        });
+    }
 
     document.querySelectorAll('.retro-tabs .tab-item').forEach(tab => {
         tab.addEventListener('click', () => {
-            if (sqlInput) tabQueries[currentTab] = sqlInput.value;
+            const newTabName = tab.textContent.trim();
+            if (newTabName === currentTabName) return;
+
+            saveCurrentTabState();
+
             tab.parentElement.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            currentTab = tab.textContent.trim();
-            if (sqlInput) sqlInput.value = tabQueries[currentTab] || '';
+
+            currentTabName = newTabName;
+            restoreTabState(currentTabName);
         });
     });
 }
@@ -1050,6 +1110,7 @@ if (btnExecute) {
             statusEl.style.color = '#c00';
         } finally {
             btnExecute.disabled = false;
+            saveCurrentTabState();
         }
     });
 }

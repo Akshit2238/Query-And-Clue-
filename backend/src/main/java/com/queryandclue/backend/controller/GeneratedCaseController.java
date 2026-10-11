@@ -1,9 +1,11 @@
 package com.queryandclue.backend.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.queryandclue.backend.entity.Case;
 import com.queryandclue.backend.generated.GeneratedCase;
 import com.queryandclue.backend.service.AICaseGeneratorService;
 import com.queryandclue.backend.service.CaseSaveService;
@@ -31,7 +33,7 @@ public class GeneratedCaseController {
     }
 
     @PostMapping("/generate-and-save")
-    public String generateAndSaveCase() {
+    public ResponseEntity<?> generateAndSaveCase() {
 
         GeneratedCase generatedCase =
                 aiCaseGeneratorService.generateCase();
@@ -40,11 +42,11 @@ public class GeneratedCaseController {
                 caseValidator.validate(generatedCase);
 
         if (!valid) {
-            return "AI GENERATED CASE IS INVALID - NOT SAVED";
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", "AI generated case was invalid and was not saved."));
         }
 
-        caseSaveService.saveGeneratedCase(generatedCase);
-
-        return "AI CASE GENERATED AND SAVED SUCCESSFULLY";
+        Case savedCase = caseSaveService.saveGeneratedCase(generatedCase);
+        return ResponseEntity.ok(savedCase);
     }
 }

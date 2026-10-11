@@ -1,0 +1,792 @@
+/* =========================================
+   QUERY & CLUE — RETRO 90S OS DESIGN SYSTEM
+   ========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+:root {
+    --desktop-bg: #008080;
+    --win-bg: #c0c0c0;
+    --win-bg-light: #dfdfdf;
+    --win-border-light: #ffffff;
+    --win-border-dark: #808080;
+    --win-border-darkest: #000000;
+    --title-bg: linear-gradient(90deg, #000080, #1084d0);
+    --title-text: #ffffff;
+    --taskbar-bg: #c0c0c0;
+    --font-ui: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+    --font-mono: "Courier New", Courier, monospace;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--desktop-bg);
+    font-family: var(--font-ui);
+    user-select: none;
+}
+
+/* =========================================
+   DESKTOP & ICONS
+   ========================================= */
+
+#desktop {
+    position: relative;
+    width: 100vw;
+    height: calc(100vh - 36px);
+    background: #008080 url('../assets/windows_xp_bliss.jpg') no-repeat center center / cover;
+    overflow: hidden;
+}
+
+.desktop-icons {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 4px;
+    max-height: calc(100vh - 46px);
+    z-index: 10;
+}
+
+.icon-btn {
+    width: 72px;
+    height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 2px 2px;
+    cursor: pointer;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    gap: 2px;
+    user-select: none;
+    border-radius: 2px;
+}
+
+.icon-btn span {
+    text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 0px 2px 4px rgba(0,0,0,0.9);
+    word-break: break-word;
+    line-height: 1.15;
+    letter-spacing: 0.2px;
+}
+
+.icon-btn:hover {
+    background-color: rgba(49, 106, 197, 0.4);
+    border: 1px dotted rgba(255, 255, 255, 0.85);
+}
+
+.icon-btn:focus, .icon-btn.active {
+    background-color: rgba(49, 106, 197, 0.75);
+    border: 1px solid #316ac5;
+}
+
+.icon-svg {
+    width: 36px;
+    height: 36px;
+    filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.65));
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    shape-rendering: crispEdges;
+}
+
+/* =========================================
+   RETRO WINDOW FRAME (Windows 95/98 Style)
+   ========================================= */
+
+.retro-window {
+    position: absolute;
+    background: var(--win-bg);
+    border-top: 2px solid var(--win-border-light);
+    border-left: 2px solid var(--win-border-light);
+    border-right: 2px solid var(--win-border-darkest);
+    border-bottom: 2px solid var(--win-border-darkest);
+    box-shadow: inset -1px -1px var(--win-border-dark), inset 1px 1px var(--win-border-light), 4px 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    min-width: 340px;
+    min-height: 220px;
+    z-index: 100;
+}
+
+.retro-window.hidden {
+    display: none !important;
+}
+
+.retro-window.maximized {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: calc(100vh - 36px) !important;
+    max-width: none !important;
+    max-height: none !important;
+}
+
+.retro-window.no-shadow {
+    box-shadow: inset -1px -1px var(--win-border-dark), inset 1px 1px var(--win-border-light) !important;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.035) 2px,
+        rgba(0,0,0,0.035) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+}
+
+body.no-scanlines::before {
+    display: none !important;
+}
+
+.win-resize-handle {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 14px;
+    height: 14px;
+    cursor: nwse-resize;
+    z-index: 90;
+    background: linear-gradient(135deg,
+        transparent 0%, transparent 45%,
+        #808080 45%, #808080 55%,
+        #ffffff 55%, #ffffff 65%,
+        transparent 65%, transparent 75%,
+        #808080 75%, #808080 85%,
+        #ffffff 85%, #ffffff 95%,
+        transparent 95%);
+    user-select: none;
+}
+
+.retro-window.maximized .win-resize-handle {
+    display: none !important;
+}
+
+/* 3D Inset Panels */
+.sunken-panel {
+    background: #ffffff;
+    border-top: 2px solid var(--win-border-dark);
+    border-left: 2px solid var(--win-border-dark);
+    border-right: 2px solid var(--win-border-light);
+    border-bottom: 2px solid var(--win-border-light);
+    box-shadow: inset 1px 1px 0 #000000;
+    color: #000000;
+}
+
+.titlebar {
+    height: 26px;
+    background: var(--title-bg);
+    color: var(--title-text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 6px;
+    font-weight: bold;
+    font-size: 13px;
+    cursor: move;
+    letter-spacing: 0.5px;
+}
+
+.titlebar-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.titlebar-controls {
+    display: flex;
+    gap: 3px;
+}
+
+.win-btn {
+    width: 18px;
+    height: 16px;
+    background: var(--win-bg);
+    border-top: 1px solid var(--win-border-light);
+    border-left: 1px solid var(--win-border-light);
+    border-right: 1px solid var(--win-border-darkest);
+    border-bottom: 1px solid var(--win-border-darkest);
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 12px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+    color: black;
+}
+
+.win-btn:active {
+    border-top: 1px solid var(--win-border-darkest);
+    border-left: 1px solid var(--win-border-darkest);
+    border-right: 1px solid var(--win-border-light);
+    border-bottom: 1px solid var(--win-border-light);
+    padding: 1px 0 0 1px;
+}
+
+.window-body {
+    flex: 1;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+/* =========================================
+   RETRO CONTROLS & TABS
+   ========================================= */
+
+.retro-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--win-border-dark);
+    margin-bottom: 6px;
+    gap: 2px;
+}
+
+.tab-item {
+    background: var(--win-bg);
+    border-top: 2px solid var(--win-border-light);
+    border-left: 2px solid var(--win-border-light);
+    border-right: 2px solid var(--win-border-darkest);
+    padding: 4px 14px;
+    font-size: 11px;
+    cursor: pointer;
+    position: relative;
+    top: 2px;
+}
+
+.tab-item.active {
+    background: var(--win-bg);
+    border-bottom: 2px solid var(--win-bg);
+    font-weight: bold;
+    z-index: 2;
+}
+
+.retro-btn {
+    background: var(--win-bg);
+    border-top: 2px solid var(--win-border-light);
+    border-left: 2px solid var(--win-border-light);
+    border-right: 2px solid var(--win-border-darkest);
+    border-bottom: 2px solid var(--win-border-darkest);
+    box-shadow: inset -1px -1px var(--win-border-dark);
+    padding: 4px 14px;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    cursor: pointer;
+    color: black;
+}
+
+.retro-btn:active {
+    border-top: 2px solid var(--win-border-darkest);
+    border-left: 2px solid var(--win-border-darkest);
+    border-right: 2px solid var(--win-border-light);
+    border-bottom: 2px solid var(--win-border-light);
+    box-shadow: none;
+    padding: 5px 13px 3px 15px;
+}
+
+textarea.sunken-panel, input.sunken-panel, select.sunken-panel {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 6px;
+    outline: none;
+    resize: none;
+}
+
+/* =========================================
+   SPECIFIC WINDOW CONTENT STYLES
+   ========================================= */
+
+/* Search Tables (SQL Query) Window */
+#win-search {
+    width: 560px;
+    height: 400px;
+    top: 90px;
+    left: 260px;
+}
+
+.sql-area {
+    width: 100%;
+    height: 150px;
+    background: #ffffff;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: #000080;
+    margin-bottom: 8px;
+}
+
+.query-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.results-grid {
+    flex: 1;
+    overflow: auto;
+    background: #ffffff;
+    border: 2px solid var(--win-border-dark);
+}
+
+.retro-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.retro-table th {
+    background: var(--win-bg);
+    border-right: 1px solid var(--win-border-dark);
+    border-bottom: 1px solid var(--win-border-dark);
+    padding: 4px 8px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+}
+
+.retro-table td {
+    border-right: 1px dotted #ccc;
+    border-bottom: 1px dotted #ccc;
+    padding: 4px 8px;
+    font-family: var(--font-mono);
+}
+
+/* Clue Explorer Window */
+#win-clues {
+    width: 500px;
+    height: 340px;
+    top: 60px;
+    left: 200px;
+}
+
+.clue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+    padding: 12px;
+    background: #d4d0c8;
+    height: 100%;
+    overflow-y: auto;
+    align-items: start;
+}
+
+.clue-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 8px 6px;
+    background: var(--win-bg);
+    border-top: 1px solid var(--win-border-light);
+    border-left: 1px solid var(--win-border-light);
+    border-right: 1px solid var(--win-border-darkest);
+    border-bottom: 1px solid var(--win-border-darkest);
+    font-size: 11px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.1s, box-shadow 0.1s, background-color 0.1s;
+    user-select: none;
+    box-sizing: border-box;
+    min-height: 145px;
+}
+
+.clue-card:hover {
+    background: #dbeafe;
+    border-color: #2563eb;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.25);
+    transform: translateY(-2px);
+}
+
+.clue-card:active {
+    border-top: 1px solid var(--win-border-darkest);
+    border-left: 1px solid var(--win-border-darkest);
+    border-right: 1px solid var(--win-border-light);
+    border-bottom: 1px solid var(--win-border-light);
+    transform: translateY(1px);
+}
+
+.clue-card .mugshot-placeholder {
+    width: 72px;
+    height: 72px;
+    border: 1px solid #000;
+    margin-bottom: 6px;
+    background: #090d16;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
+    flex-shrink: 0;
+}
+
+.clue-card .mugshot-placeholder svg,
+.crt-screen svg {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+}
+
+.clue-card strong {
+    font-size: 11px;
+    line-height: 1.25;
+    margin-top: 2px;
+    display: block;
+    word-break: break-word;
+}
+
+.clue-card span {
+    font-size: 9px;
+    color: #555;
+    margin-top: 2px;
+    display: block;
+    word-break: break-word;
+}
+
+/* CRT Evidence Screen in Inspector */
+.crt-screen {
+    width: 170px;
+    height: 170px;
+    background: #020617;
+    border: 2px solid #000;
+    box-shadow: inset 0 0 14px rgba(16, 185, 129, 0.25), 2px 2px 0 #fff;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.crt-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.45) 2px, rgba(0, 0, 0, 0.45) 4px);
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Scanner & Clue Visual Keyframe Animations */
+@keyframes laserSweep {
+    0% { transform: translateY(-70px); opacity: 0.3; }
+    50% { transform: translateY(70px); opacity: 0.95; }
+    100% { transform: translateY(-70px); opacity: 0.3; }
+}
+
+@keyframes laserSweepThumb {
+    0% { transform: translateY(-35px); opacity: 0.3; }
+    50% { transform: translateY(35px); opacity: 0.95; }
+    100% { transform: translateY(-35px); opacity: 0.3; }
+}
+
+@keyframes radarSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes dotBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.15; }
+}
+
+@keyframes waveOscillate {
+    0%, 100% { transform: scaleY(0.65); }
+    50% { transform: scaleY(1.35); }
+}
+
+@keyframes uvPulse {
+    0%, 100% { filter: drop-shadow(0 0 2px #a855f7); }
+    50% { filter: drop-shadow(0 0 8px #d8b4fe); }
+}
+
+/* Arrest Warrant Window */
+#win-arrest {
+    width: 530px;
+    height: 490px;
+    top: 40px;
+    left: 160px;
+}
+
+.warrant-paper {
+    background: #fff0f5;
+    border: 1px solid #b0b0b0;
+    padding: 24px;
+    height: 100%;
+    overflow-y: auto;
+    font-family: 'Times New Roman', Times, serif;
+    color: #333;
+    text-align: center;
+}
+
+.warrant-header {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.warrant-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 15px 0;
+    text-transform: uppercase;
+}
+
+.warrant-body {
+    font-size: 14px;
+    line-height: 1.8;
+    text-align: justify;
+    margin: 15px 0;
+}
+
+.warrant-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 3px solid #c00000;
+    background: #fff;
+    color: #c00000;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    text-transform: uppercase;
+}
+
+.warrant-btn:hover {
+    background: #c00000;
+    color: #fff;
+}
+
+/* Notepad Window */
+#win-notepad {
+    width: 460px;
+    height: 340px;
+    top: 120px;
+    left: 320px;
+}
+
+/* Suspects Window */
+#win-suspects {
+    width: 460px;
+    height: 220px;
+    top: 140px;
+    left: 280px;
+}
+
+/* Manual & Cases Window */
+#win-manual {
+    width: 480px;
+    height: 380px;
+    top: 80px;
+    left: 240px;
+}
+
+/* Web Browser Window */
+#win-browser {
+    width: 520px;
+    height: 360px;
+    top: 70px;
+    left: 230px;
+}
+
+/* Messages Window */
+#win-messages {
+    width: 440px;
+    height: 260px;
+    top: 100px;
+    left: 270px;
+}
+
+/* Music Player Window */
+#win-music {
+    width: 380px;
+    height: 200px;
+    top: 130px;
+    left: 310px;
+}
+
+/* Settings Window */
+#win-settings {
+    width: 400px;
+    height: 260px;
+    top: 110px;
+    left: 290px;
+}
+
+.suspects-window-body {
+    background: #d4c5d9 !important;
+    padding: 10px;
+    font-family: var(--font-mono);
+}
+
+.suspects-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    color: #000;
+}
+
+.suspects-table th {
+    text-align: left;
+    padding: 4px 8px;
+    font-weight: bold;
+    border-bottom: 1px solid #000;
+}
+
+.suspects-table td {
+    padding: 3px 8px;
+    text-align: left;
+}
+
+.notepad-layout {
+    display: flex;
+    height: 100%;
+    gap: 6px;
+}
+
+.notepad-sidebar {
+    width: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.notepad-canvas {
+    flex: 1;
+    background: #fff9c4;
+    border: 1px solid var(--win-border-dark);
+    padding: 10px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.notepad-colors {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: auto;
+}
+
+.color-swatch {
+    width: 26px;
+    height: 22px;
+    border: 1px solid black;
+    cursor: pointer;
+}
+
+/* =========================================
+   TASKBAR & CHARACTER MASCOT
+   ========================================= */
+
+#taskbar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 36px;
+    background: var(--taskbar-bg);
+    border-top: 2px solid var(--win-border-light);
+    display: flex;
+    align-items: center;
+    padding: 2px 4px;
+    z-index: 1000;
+    gap: 6px;
+}
+
+.start-btn {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    padding: 2px 10px;
+}
+
+.taskbar-items {
+    flex: 1;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+}
+
+.task-item {
+    height: 28px;
+    min-width: 110px;
+    max-width: 160px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    background: var(--win-bg);
+    border-top: 2px solid var(--win-border-light);
+    border-left: 2px solid var(--win-border-light);
+    border-right: 2px solid var(--win-border-darkest);
+    border-bottom: 2px solid var(--win-border-darkest);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-item.active {
+    background: var(--win-bg-light);
+    border-top: 2px solid var(--win-border-darkest);
+    border-left: 2px solid var(--win-border-darkest);
+    border-right: 2px solid var(--win-border-light);
+    border-bottom: 2px solid var(--win-border-light);
+}
+
+.taskbar-tray {
+    height: 28px;
+    padding: 0 12px;
+    border-top: 1px solid var(--win-border-dark);
+    border-left: 1px solid var(--win-border-dark);
+    border-right: 1px solid var(--win-border-light);
+    border-bottom: 1px solid var(--win-border-light);
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: bold;
+    background: var(--win-bg);
+    margin-right: 90px;
+}
+
+/* Piggy Officer Mascot Peeking Over Taskbar */
+.cop-mascot {
+    position: absolute;
+    bottom: 34px;
+    right: 12px;
+    width: 84px;
+    height: 70px;
+    z-index: 1001;
+    pointer-events: none;
+    filter: drop-shadow(0px -2px 4px rgba(0,0,0,0.4));
+}

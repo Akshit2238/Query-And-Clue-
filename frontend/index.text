@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <title>Query and Clue</title>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>Query and Clue</h1>
+
+        <nav>
+            <a href="#">Home</a>
+            <a href="#">Cases</a>
+            <a href="#">About</a>
+        </nav>
+    </header>
+
+
+    <!-- Main Content -->
+    <main>
+
+        <!-- Welcome Section -->
+        <section>
+            <h2>Welcome, Detective</h2>
+
+            <p>
+                Investigate cases, uncover clues, and solve mysteries
+                using your SQL skills.
+            </p>
+
+            <button type="button">Start Investigation</button>
+        </section>
+
+
+        <!-- Cases Section -->
+        <section>
+            <h2>Available Cases</h2>
+
+            <!-- Case 1 -->
+            <article>
+                <h3>The Midnight Ledger</h3>
+
+                <p>Difficulty: Medium</p>
+
+                <p>
+                    Investigate a mysterious crime and uncover
+                    the truth hidden within the evidence.
+                </p>
+
+                <button type="button">Investigate</button>
+            </article>
+
+        </section>
+
+    </main>
+
+
+    <!-- Footer -->
+    <footer>
+        <p>Query and Clue</p>
+        <p>© 2026 Query and Clue</p>
+    </footer>
+
+</body>
+
+</html>

@@ -1,415 +1,501 @@
 package com.queryandclue.backend.service;
 
-import java.util.Map;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
 import org.springframework.stereotype.Service;
 
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Schema;
-import com.google.genai.types.Type;
 import com.queryandclue.backend.generated.GeneratedCase;
 
-import tools.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class AICaseGeneratorService {
 
-    private final Client client;
-    private final JsonMapper jsonMapper;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
 
-    public AICaseGeneratorService(JsonMapper jsonMapper) {
-        this.client = new Client();
-        this.jsonMapper = jsonMapper;
+    public AICaseGeneratorService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build();
     }
 
     public GeneratedCase generateCase() {
 
-        String prompt = """
-                Generate one completely original fictional detective case
-                for a SQL-based investigation game called Query & Clue.
+        String apiKey = System.getenv("GROQ_API_KEY");
 
-                Return JSON matching the provided response schema exactly.
-
-                Rules:
-                - Exactly 1 victim.
-                - At least 4 suspects.
-                - At least 1 crime scene.
-                - At least 5 evidence records.
-                - At least 6 timeline events.
-                - Generate useful access logs.
-                - Generate useful phone records.
-                - Generate useful financial transactions.
-                - Exactly 1 culprit.
-                - The culprit must be one of the suspects.
-                - All records must be logically consistent.
-                - The case must be solvable using SQL queries.
-                - Do not generate database IDs.
-                - Do not use real people.
-                - Do not use real criminal cases.
-                - The solution must contain the culprit name,
-                  motive, crime method, and explanation.
-                - crimeDate and dateFound must use YYYY-MM-DD.
-                - Date/time fields must use YYYY-MM-DDTHH:MM:SS.
-                - Use the exact field names from the response schema.
-                - Do not add extra fields.
-                """;
-
-        Schema caseSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "title", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "description", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "difficulty", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "crimeDate", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "crimeType", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "title",
-                        "description",
-                        "difficulty",
-                        "crimeDate",
-                        "crimeType"
-                )
-                .build();
-
-        Schema victimSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "name", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "age", Schema.builder()
-                                .type(Type.Known.INTEGER)
-                                .build(),
-
-                        "occupation", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "causeOfCrime", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "name",
-                        "age",
-                        "occupation",
-                        "causeOfCrime"
-                )
-                .build();
-
-        Schema suspectSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "name", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "age", Schema.builder()
-                                .type(Type.Known.INTEGER)
-                                .build(),
-
-                        "occupation", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "relationshipToVictim", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "motive", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "alibi", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "name",
-                        "age",
-                        "occupation",
-                        "relationshipToVictim",
-                        "motive",
-                        "alibi"
-                )
-                .build();
-
-        Schema crimeSceneSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "name", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "location", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "description", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "name",
-                        "location",
-                        "description"
-                )
-                .build();
-
-        Schema evidenceSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "description", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "location", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "evidenceType", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "dateFound", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "description",
-                        "location",
-                        "evidenceType",
-                        "dateFound"
-                )
-                .build();
-
-        Schema timelineSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "eventTime", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "description", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "eventTime",
-                        "description"
-                )
-                .build();
-
-        Schema accessLogSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "suspectName", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "location", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "accessTime", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "exitTime", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "suspectName",
-                        "location",
-                        "accessTime",
-                        "exitTime"
-                )
-                .build();
-
-        Schema phoneRecordSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "callerSuspectName", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "receiverSuspectName", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "callTime", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "callDuration", Schema.builder()
-                                .type(Type.Known.INTEGER)
-                                .build()
-                ))
-                .required(
-                        "callerSuspectName",
-                        "receiverSuspectName",
-                        "callTime",
-                        "callDuration"
-                )
-                .build();
-
-        Schema transactionSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "suspectName", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "amount", Schema.builder()
-                                .type(Type.Known.NUMBER)
-                                .build(),
-
-                        "transactionDate", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "description", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "suspectName",
-                        "amount",
-                        "transactionDate",
-                        "description"
-                )
-                .build();
-
-        Schema solutionSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "culpritSuspectName", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "motive", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "crimeMethod", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build(),
-
-                        "explanation", Schema.builder()
-                                .type(Type.Known.STRING)
-                                .build()
-                ))
-                .required(
-                        "culpritSuspectName",
-                        "motive",
-                        "crimeMethod",
-                        "explanation"
-                )
-                .build();
-
-        Schema fullSchema = Schema.builder()
-                .type(Type.Known.OBJECT)
-                .properties(Map.of(
-                        "case", caseSchema,
-
-                        "victim", victimSchema,
-
-                        "suspects", Schema.builder()
-                                .type(Type.Known.ARRAY)
-                                .items(suspectSchema)
-                                .build(),
-
-                        "crimeScenes", Schema.builder()
-                                .type(Type.Known.ARRAY)
-                                .items(crimeSceneSchema)
-                                .build(),
-
-                        "evidence", Schema.builder()
-                                .type(Type.Known.ARRAY)
-                                .items(evidenceSchema)
-                                .build(),
-
-                        "timelineEvents", Schema.builder()
-                                .type(Type.Known.ARRAY)
-                                .items(timelineSchema)
-                                .build(),
-
-                        "accessLogs", Schema.builder()
-                                .type(Type.Known.ARRAY)
-                                .items(accessLogSchema)
-                                .build(),
-
-                        "phoneRecords", Schema.builder()
-                                .type(Type.Known.ARRAY)
-                                .items(phoneRecordSchema)
-                                .build(),
-
-                        "transactions", Schema.builder()
-                                .type(Type.Known.ARRAY)
-                                .items(transactionSchema)
-                                .build(),
-
-                        "solution", solutionSchema
-                ))
-                .required(
-                        "case",
-                        "victim",
-                        "suspects",
-                        "crimeScenes",
-                        "evidence",
-                        "timelineEvents",
-                        "accessLogs",
-                        "phoneRecords",
-                        "transactions",
-                        "solution"
-                )
-                .build();
-
-        GenerateContentConfig config =
-                GenerateContentConfig.builder()
-                        .responseMimeType("application/json")
-                        .responseSchema(fullSchema)
-                        .build();
-
-        GenerateContentResponse response =
-                client.models.generateContent(
-                        "gemini-3.6-flash",
-                        prompt,
-                        config
-                );
-
-        String json = response.text();
-
-        if (json == null || json.isBlank()) {
-            throw new RuntimeException("Gemini returned empty JSON");
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new RuntimeException(
+                    "GROQ_API_KEY environment variable is not set"
+            );
         }
 
+        String prompt = """
+                Generate exactly ONE original fictional detective case for an SQL investigation game.
+
+                The case must be logically consistent, solvable, and fictional.
+
+                EXACT DATA COUNTS:
+                - 1 victim
+                - exactly 4 suspects
+                - exactly 1 crime scene
+                - exactly 5 evidence records
+                - exactly 6 timeline events
+                - exactly 4 access logs
+                - exactly 4 phone records
+                - exactly 4 transactions
+                - exactly 1 solution
+
+                IMPORTANT REFERENCE RULES:
+
+                1. There are exactly 4 suspects.
+                2. Every accessLog.suspectName MUST exactly match one of the 4 suspect names.
+                3. Every transaction.suspectName MUST exactly match one of the 4 suspect names.
+                4. Every phoneRecord.callerSuspectName MUST exactly match one of the 4 suspect names.
+                5. Every phoneRecord.receiverSuspectName MUST exactly match one of the 4 suspect names.
+                6. Do NOT use names such as "Unknown", "Unknown Rival", "Developer Partner", "Anonymous", or any person who is not a suspect.
+                7. solution.culpritSuspectName MUST exactly match one of the 4 suspect names.
+                8. The culprit must be one of the suspects.
+                9. All records must belong logically to the same case.
+                10. The evidence, timeline, access logs, phone records, and transactions must provide enough information to solve the case using SQL queries.
+
+                CONTENT RULES:
+
+                - Use fictional people and locations only.
+                - Do not use real crimes or real people.
+                - Keep descriptions concise.
+                - Use plain ASCII characters only.
+                - Do not use em dashes, en dashes, smart quotes, currency symbols, or unusual Unicode characters.
+                - Use dates in YYYY-MM-DD format.
+                - Use date-times in YYYY-MM-DDTHH:MM:SS format.
+                - Use positive numbers for ages, amounts, and call durations.
+                - Do not add database IDs.
+                - Do not add fields that are not in the required schema.
+                - The final solution must identify the culprit, motive, crime method, and explain how the clues prove it.
+
+                Make the mystery interesting but keep the generated data compact.
+                Return ONLY the structured data required by the JSON schema.
+                """;
+
+        String requestBody = buildRequestBody(prompt);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.groq.com/openai/v1/chat/completions"))
+                .timeout(Duration.ofMinutes(2))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+
         try {
-            return jsonMapper.readValue(json, GeneratedCase.class);
-        } catch (Exception e) {
+
+            HttpResponse<String> response =
+                    httpClient.send(
+                            request,
+                            HttpResponse.BodyHandlers.ofString()
+                    );
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+
+                throw new RuntimeException(
+                        "Groq API error "
+                                + response.statusCode()
+                                + ": "
+                                + response.body()
+                );
+            }
+
+            JsonNode root = objectMapper.readTree(response.body());
+
+            JsonNode choices = root.get("choices");
+
+            if (choices == null || !choices.isArray() || choices.isEmpty()) {
+                throw new RuntimeException(
+                        "Groq response did not contain choices"
+                );
+            }
+
+            JsonNode message = choices.get(0).get("message");
+
+            if (message == null) {
+                throw new RuntimeException(
+                        "Groq response did not contain message"
+                );
+            }
+
+            JsonNode contentNode = message.get("content");
+
+            if (contentNode == null || contentNode.isNull()) {
+                throw new RuntimeException(
+                        "Groq response did not contain generated content"
+                );
+            }
+
+            String json = contentNode.textValue();
+
+            if (json == null || json.isBlank()) {
+                throw new RuntimeException(
+                        "Groq returned empty generated content"
+                );
+            }
+
+            return objectMapper.readValue(
+                    json,
+                    GeneratedCase.class
+            );
+
+        } catch (InterruptedException e) {
+
+            Thread.currentThread().interrupt();
+
             throw new RuntimeException(
-                    "Could not convert Gemini JSON to GeneratedCase",
+                    "Groq request was interrupted",
                     e
             );
+
+        } catch (Exception e) {
+
+            if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            }
+
+            throw new RuntimeException(
+                    "Could not generate detective case using Groq",
+                    e
+            );
+        }
+    }
+
+    private String buildRequestBody(String prompt) {
+
+        return """
+                {
+                  "model": "openai/gpt-oss-120b",
+                  "messages": [
+                    {
+                      "role": "user",
+                      "content": %s
+                    }
+                  ],
+                  "temperature": 0.2,
+                  "max_completion_tokens": 8192,
+                  "reasoning_effort": "low",
+                  "include_reasoning": false,
+                  "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                      "name": "detective_case",
+                      "strict": true,
+                      "schema": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "case",
+                          "victim",
+                          "suspects",
+                          "crimeScenes",
+                          "evidence",
+                          "timelineEvents",
+                          "accessLogs",
+                          "phoneRecords",
+                          "transactions",
+                          "solution"
+                        ],
+                        "properties": {
+
+                          "case": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "title",
+                              "description",
+                              "difficulty",
+                              "crimeDate",
+                              "crimeType"
+                            ],
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "difficulty": {
+                                "type": "string"
+                              },
+                              "crimeDate": {
+                                "type": "string"
+                              },
+                              "crimeType": {
+                                "type": "string"
+                              }
+                            }
+                          },
+
+                          "victim": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "name",
+                              "age",
+                              "occupation",
+                              "causeOfCrime"
+                            ],
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "age": {
+                                "type": "integer"
+                              },
+                              "occupation": {
+                                "type": "string"
+                              },
+                              "causeOfCrime": {
+                                "type": "string"
+                              }
+                            }
+                          },
+
+                          "suspects": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "name",
+                                "age",
+                                "occupation",
+                                "relationshipToVictim",
+                                "motive",
+                                "alibi"
+                              ],
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "age": {
+                                  "type": "integer"
+                                },
+                                "occupation": {
+                                  "type": "string"
+                                },
+                                "relationshipToVictim": {
+                                  "type": "string"
+                                },
+                                "motive": {
+                                  "type": "string"
+                                },
+                                "alibi": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+
+                          "crimeScenes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "name",
+                                "location",
+                                "description"
+                              ],
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "location": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+
+                          "evidence": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "description",
+                                "location",
+                                "evidenceType",
+                                "dateFound"
+                              ],
+                              "properties": {
+                                "description": {
+                                  "type": "string"
+                                },
+                                "location": {
+                                  "type": "string"
+                                },
+                                "evidenceType": {
+                                  "type": "string"
+                                },
+                                "dateFound": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+
+                          "timelineEvents": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "eventTime",
+                                "description"
+                              ],
+                              "properties": {
+                                "eventTime": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+
+                          "accessLogs": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "suspectName",
+                                "location",
+                                "accessTime",
+                                "exitTime"
+                              ],
+                              "properties": {
+                                "suspectName": {
+                                  "type": "string"
+                                },
+                                "location": {
+                                  "type": "string"
+                                },
+                                "accessTime": {
+                                  "type": "string"
+                                },
+                                "exitTime": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+
+                          "phoneRecords": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "callerSuspectName",
+                                "receiverSuspectName",
+                                "callTime",
+                                "callDuration"
+                              ],
+                              "properties": {
+                                "callerSuspectName": {
+                                  "type": "string"
+                                },
+                                "receiverSuspectName": {
+                                  "type": "string"
+                                },
+                                "callTime": {
+                                  "type": "string"
+                                },
+                                "callDuration": {
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          },
+
+                          "transactions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "suspectName",
+                                "amount",
+                                "transactionDate",
+                                "description"
+                              ],
+                              "properties": {
+                                "suspectName": {
+                                  "type": "string"
+                                },
+                                "amount": {
+                                  "type": "number"
+                                },
+                                "transactionDate": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+
+                          "solution": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "culpritSuspectName",
+                              "motive",
+                              "crimeMethod",
+                              "explanation"
+                            ],
+                            "properties": {
+                              "culpritSuspectName": {
+                                "type": "string"
+                              },
+                              "motive": {
+                                "type": "string"
+                              },
+                              "crimeMethod": {
+                                "type": "string"
+                              },
+                              "explanation": {
+                                "type": "string"
+                              }
+                            }
+                          }
+
+                        }
+                      }
+                    }
+                  }
+                }
+                """.formatted(
+                formatPrompt(prompt)
+        );
+    }
+
+    private String formatPrompt(String prompt) {
+        try {
+            return objectMapper.writeValueAsString(prompt);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize prompt", e);
         }
     }
 }

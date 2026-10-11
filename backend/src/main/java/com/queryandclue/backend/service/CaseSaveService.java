@@ -68,7 +68,7 @@ public class CaseSaveService {
     }
 
     @Transactional
-    public void saveGeneratedCase(GeneratedCase generatedCase) {
+    public Case saveGeneratedCase(GeneratedCase generatedCase) {
 
         // =========================
         // 1. SAVE CASE
@@ -84,11 +84,9 @@ public class CaseSaveService {
         if (generatedCase.getCaseData().getCrimeDate() != null
                 && !generatedCase.getCaseData().getCrimeDate().isBlank()) {
 
-            newCase.setCrimeDate(
-                    LocalDate.parse(
-                            generatedCase.getCaseData().getCrimeDate()
-                    )
-            );
+            String cd = generatedCase.getCaseData().getCrimeDate().trim();
+            if (cd.contains("T")) cd = cd.split("T")[0];
+            newCase.setCrimeDate(LocalDate.parse(cd));
         }
 
         Case savedCase = caseRepository.save(newCase);
@@ -138,12 +136,9 @@ public class CaseSaveService {
             Suspect savedSuspect =
                     suspectRepository.save(suspect);
 
-            // Store:
-            // suspect name -> database suspect ID
-            suspectIds.put(
-                    generatedSuspect.getName().toLowerCase(),
-                    savedSuspect.getSuspectId()
-            );
+            // Store both exact and trimmed lowercase for fuzzy lookup
+            String key = generatedSuspect.getName().trim().toLowerCase();
+            suspectIds.put(key, savedSuspect.getSuspectId());
         }
 
 
@@ -222,16 +217,9 @@ public class CaseSaveService {
         for (GeneratedCase.AccessLog generatedLog
                 : generatedCase.getAccessLogs()) {
 
-            Integer suspectId = suspectIds.get(
-                    generatedLog.getSuspectName().toLowerCase()
+            Integer suspectId = findSuspectId(
+                    suspectIds, generatedLog.getSuspectName(), "access log"
             );
-
-            if (suspectId == null) {
-                throw new RuntimeException(
-                        "Suspect not found: "
-                                + generatedLog.getSuspectName()
-                );
-            }
 
             AccessLog accessLog = new AccessLog();
 
@@ -258,33 +246,13 @@ public class CaseSaveService {
         for (GeneratedCase.PhoneRecord generatedRecord
                 : generatedCase.getPhoneRecords()) {
 
-            Integer callerId = suspectIds.get(
-                    generatedRecord
-                            .getCallerSuspectName()
-                            .toLowerCase()
+            Integer callerId = findSuspectId(
+                    suspectIds, generatedRecord.getCallerSuspectName(), "phone caller"
             );
 
-            Integer receiverId = suspectIds.get(
-                    generatedRecord
-                            .getReceiverSuspectName()
-                            .toLowerCase()
+            Integer receiverId = findSuspectId(
+                    suspectIds, generatedRecord.getReceiverSuspectName(), "phone receiver"
             );
-
-            if (callerId == null) {
-                throw new RuntimeException(
-                        "Caller suspect not found: "
-                                + generatedRecord
-                                .getCallerSuspectName()
-                );
-            }
-
-            if (receiverId == null) {
-                throw new RuntimeException(
-                        "Receiver suspect not found: "
-                                + generatedRecord
-                                .getReceiverSuspectName()
-                );
-            }
 
             PhoneRecord phoneRecord = new PhoneRecord();
 
@@ -309,19 +277,9 @@ public class CaseSaveService {
         for (GeneratedCase.Transaction generatedTransaction
                 : generatedCase.getTransactions()) {
 
-            Integer suspectId = suspectIds.get(
-                    generatedTransaction
-                            .getSuspectName()
-                            .toLowerCase()
+            Integer suspectId = findSuspectId(
+                    suspectIds, generatedTransaction.getSuspectName(), "transaction"
             );
-
-            if (suspectId == null) {
-                throw new RuntimeException(
-                        "Suspect not found: "
-                                + generatedTransaction
-                                .getSuspectName()
-                );
-            }
 
             Transaction transaction = new Transaction();
 
@@ -348,19 +306,9 @@ public class CaseSaveService {
         GeneratedCase.Solution generatedSolution =
                 generatedCase.getSolution();
 
-        Integer culpritId = suspectIds.get(
-                generatedSolution
-                        .getCulpritSuspectName()
-                        .toLowerCase()
+        Integer culpritId = findSuspectId(
+                suspectIds, generatedSolution.getCulpritSuspectName(), "culprit"
         );
-
-        if (culpritId == null) {
-            throw new RuntimeException(
-                    "Culprit suspect not found: "
-                            + generatedSolution
-                            .getCulpritSuspectName()
-            );
-        }
 
         CaseSolution caseSolution = new CaseSolution();
 
@@ -377,5 +325,31 @@ public class CaseSaveService {
         );
 
         caseSolutionRepository.save(caseSolution);
+        return savedCase;
+    }
+
+    /**
+     * Finds a suspect ID by name using case-insensitive, trimmed matching.
+     * Falls back to partial first-word match to handle minor AI name variations.
+     */
+    private Integer findSuspectId(Map<String, Integer> suspectIds, String name, String context) {
+        if (name == null) {
+            throw new RuntimeException("Null suspect name in " + context);
+        }
+        String key = name.trim().toLowerCase();
+        Integer id = suspectIds.get(key);
+        if (id != null) return id;
+
+        // Fuzzy fallback: try matching by first word only
+        String firstWord = key.split("\\s+")[0];
+        for (Map.Entry<String, Integer> entry : suspectIds.entrySet()) {
+            if (entry.getKey().startsWith(firstWord)) {
+                return entry.getValue();
+            }
+        }
+
+        throw new RuntimeException(
+                "Suspect not found for " + context + ": '" + name + "'. Known suspects: " + suspectIds.keySet()
+        );
     }
 }

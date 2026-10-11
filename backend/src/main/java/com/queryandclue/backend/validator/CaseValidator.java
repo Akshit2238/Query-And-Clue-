@@ -87,14 +87,7 @@ public class CaseValidator {
             return false;
         }
 
-        if (isBlank(generatedCase.getCaseData().getCrimeDate())) {
-            return false;
-        }
-
-        // Check date format
-        try {
-            LocalDate.parse(generatedCase.getCaseData().getCrimeDate());
-        } catch (Exception e) {
+        if (!isValidDate(generatedCase.getCaseData().getCrimeDate())) {
             return false;
         }
 
@@ -218,13 +211,7 @@ public class CaseValidator {
                 return false;
             }
 
-            if (isBlank(evidence.getDateFound())) {
-                return false;
-            }
-
-            try {
-                LocalDate.parse(evidence.getDateFound());
-            } catch (Exception e) {
+            if (!isValidDate(evidence.getDateFound())) {
                 return false;
             }
         }
@@ -367,25 +354,29 @@ public class CaseValidator {
                 return false;
             }
 
-            if (isBlank(transaction.getTransactionDate())) {
+            if (!isValidDate(transaction.getTransactionDate())) {
                 return false;
             }
 
             if (isBlank(transaction.getDescription())) {
                 return false;
             }
-
-            try {
-                LocalDateTime.parse(
-                        transaction.getTransactionDate()
-                );
-            } catch (Exception e) {
-                return false;
-            }
         }
 
 
         return true;
+    }
+
+    private boolean isValidDate(String dateStr) {
+        if (isBlank(dateStr)) return false;
+        try {
+            String s = dateStr.trim();
+            if (s.contains("T")) s = s.split("T")[0];
+            LocalDate.parse(s);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean isBlank(String value) {

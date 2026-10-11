@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query &amp; Clue — Select Chapter</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100vw; height: 100vh; overflow: hidden;
+            background: #008080 url('assets/windows_xp_bliss.jpg') no-repeat center center / cover;
+            font-family: "Tahoma", "MS Sans Serif", sans-serif;
+            user-select: none;
+        }
+
+        /* Scanline overlay */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);
+            pointer-events: none; z-index: 9999;
+        }
+
+        /* Boot log */
+        .boot-log {
+            position: absolute; bottom: 60px; left: 30px;
+            font-family: 'Courier New', monospace; font-size: 11px;
+            color: rgba(255,255,255,0.35); line-height: 1.7; pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        /* ===== MAIN DIALOG ===== */
+        .dialog {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            background: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #000000;
+            border-bottom: 2px solid #000000;
+            box-shadow: inset -1px -1px #808080, inset 1px 1px #ffffff, 8px 8px 0 rgba(0,0,0,0.4);
+            animation: popIn 0.18s ease-out;
+        }
+
+        @keyframes popIn {
+            from { transform: translate(-50%, -46%) scale(0.93); opacity: 0; }
+            to   { transform: translate(-50%, -50%) scale(1);    opacity: 1; }
+        }
+
+        .dialog-titlebar {
+            height: 28px;
+            background: linear-gradient(90deg, #000080, #1084d0);
+            color: #fff;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 6px;
+            font-weight: bold; font-size: 13px; letter-spacing: 0.5px;
+        }
+
+        .dialog-titlebar-left { display: flex; align-items: center; gap: 6px; }
+        .dialog-icon { width: 16px; height: 16px; image-rendering: pixelated; }
+
+        .dialog-body { padding: 18px 22px 16px; }
+
+        .dialog-header {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px; color: #000080;
+            text-align: center; margin-bottom: 4px; letter-spacing: 1px;
+        }
+
+        .dialog-subtitle {
+            font-size: 11px; color: #444;
+            text-align: center; margin-bottom: 14px;
+        }
+
+        /* Chapter list */
+        .chapter-list {
+            display: flex; flex-direction: column; gap: 4px;
+            max-height: 300px; overflow-y: auto;
+            border-top: 2px solid #808080;
+            border-left: 2px solid #808080;
+            border-right: 2px solid #ffffff;
+            border-bottom: 2px solid #ffffff;
+            box-shadow: inset 1px 1px 0 #000;
+            background: #ffffff;
+            padding: 4px; margin-bottom: 14px;
+            scrollbar-width: thin;
+        }
+
+        .chapter-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px; cursor: pointer;
+            border: 1px solid transparent; font-size: 12px;
+        }
+
+        .chapter-item:hover { background: #d0d8ff; }
+        .chapter-item.selected { background: #000080; color: #ffffff; }
+        .chapter-item.selected .chapter-meta { color: #aac; }
+
+        .chapter-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+
+        .chapter-info { flex: 1; }
+        .chapter-title { font-weight: bold; font-size: 12px; }
+        .chapter-meta { font-size: 10px; color: #666; margin-top: 2px; }
+
+        .chapter-badge {
+            font-size: 9px; padding: 2px 6px;
+            border: 1px solid currentColor; opacity: 0.8;
+            white-space: nowrap; flex-shrink: 0;
+        }
+
+        .chapter-loading {
+            padding: 20px; text-align: center; font-size: 11px;
+            color: #555; font-family: 'Courier New', monospace;
+        }
+
+        /* Footer buttons */
+        .dialog-footer {
+            display: flex; justify-content: flex-end; gap: 8px;
+            padding-top: 12px; border-top: 1px solid #808080;
+        }
+
+        .retro-btn {
+            background: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #000000;
+            border-bottom: 2px solid #000000;
+            box-shadow: inset -1px -1px #808080;
+            padding: 5px 20px;
+            font-family: "Tahoma", sans-serif; font-size: 12px;
+            cursor: pointer; min-width: 80px;
+        }
+        .retro-btn:active {
+            border-top: 2px solid #000; border-left: 2px solid #000;
+            border-right: 2px solid #fff; border-bottom: 2px solid #fff;
+            box-shadow: none; padding: 6px 19px 4px 21px;
+        }
+        .retro-btn.primary { font-weight: bold; }
+        .retro-btn:disabled { color: #808080; cursor: not-allowed; }
+
+        /* ===== CASE PREVIEW POPUP ===== */
+        .popup-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 1000;
+            align-items: center; justify-content: center;
+        }
+        .popup-overlay.active { display: flex; }
+
+        .popup {
+            width: 460px;
+            background: #c0c0c0;
+            border-top: 2px solid #fff;
+            border-left: 2px solid #fff;
+            border-right: 2px solid #000;
+            border-bottom: 2px solid #000;
+            box-shadow: inset -1px -1px #808080, inset 1px 1px #fff, 8px 8px 0 rgba(0,0,0,0.4);
+            animation: popIn 0.15s ease-out;
+        }
+
+        .popup-titlebar {
+            height: 28px;
+            background: linear-gradient(90deg, #800000, #c0392b);
+            color: #fff;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 6px;
+            font-weight: bold; font-size: 13px;
+        }
+        .popup-titlebar-left { display: flex; align-items: center; gap: 6px; }
+
+        .popup-body { padding: 18px 22px 16px; }
+
+        .popup-case-header {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #808080;
+        }
+
+        .popup-case-icon { font-size: 36px; }
+
+        .popup-case-title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px; color: #000080; line-height: 1.5;
+        }
+
+        .popup-case-id { font-size: 10px; color: #666; margin-top: 4px; }
+
+        .popup-tags { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+
+        .popup-tag {
+            font-size: 10px; padding: 2px 8px;
+            background: #000080; color: #fff;
+            border: 1px solid #000;
+        }
+        .popup-tag.green { background: #166534; }
+        .popup-tag.red { background: #7f1d1d; }
+        .popup-tag.gold { background: #78350f; }
+
+        .popup-desc-label {
+            font-weight: bold; font-size: 11px; margin-bottom: 6px; color: #000080;
+        }
+
+        .popup-desc {
+            font-size: 12px; line-height: 1.6; color: #222;
+            background: #fff;
+            border-top: 2px solid #808080;
+            border-left: 2px solid #808080;
+            border-right: 2px solid #fff;
+            border-bottom: 2px solid #fff;
+            padding: 8px 10px;
+            max-height: 120px; overflow-y: auto;
+        }
+
+        .popup-footer {
+            display: flex; justify-content: flex-end; gap: 8px;
+            padding-top: 12px; border-top: 1px solid #808080;
+        }
+
+        /* Taskbar */
+        #taskbar {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 36px;
+            background: #c0c0c0; border-top: 2px solid #ffffff;
+            display: flex; align-items: center; padding: 2px 4px; gap: 6px; z-index: 100;
+        }
+        .start-btn { height: 28px; display: flex; align-items: center; gap: 6px; font-weight: bold; padding: 2px 10px; }
+        .taskbar-tray {
+            margin-left: auto; height: 28px; padding: 0 12px;
+            border: 1px solid #808080; border-right-color: #fff; border-bottom-color: #fff;
+            display: flex; align-items: center; font-size: 11px; font-weight: bold; background: #c0c0c0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="boot-log">
+        <div>LZPD-OS v3.1 booting...</div>
+        <div>Loading case files... OK</div>
+        <div>Connecting to database... OK</div>
+        <div>Awaiting officer input.</div>
+    </div>
+
+    <!-- CHAPTER SELECT DIALOG -->
+    <div class="dialog" id="chapterDialog">
+        <div class="dialog-titlebar">
+            <div class="dialog-titlebar-left">
+                <svg class="dialog-icon" viewBox="0 0 16 16">
+                    <rect width="16" height="16" fill="#000080"/>
+                    <text x="2" y="12" fill="#fff" font-size="10" font-family="monospace">C</text>
+                </svg>
+                <span>Select Chapter — Query &amp; Clue</span>
+            </div>
+        </div>
+
+        <div class="dialog-body">
+            <div class="dialog-header">⚠ CASE FILE SELECTION</div>
+            <div class="dialog-subtitle">Choose an active investigation to begin your shift. Double-click to preview.</div>
+
+            <div class="chapter-list" id="chapterList">
+                <div class="chapter-loading" id="chapterLoading">Loading case files...</div>
+            </div>
+
+            <div class="dialog-footer">
+                <button class="retro-btn" onclick="location.reload()">Refresh</button>
+                <button class="retro-btn primary" id="btnOpen" disabled onclick="previewCase()">Open →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CASE PREVIEW POPUP -->
+    <div class="popup-overlay" id="previewOverlay">
+        <div class="popup" id="previewPopup">
+            <div class="popup-titlebar">
+                <div class="popup-titlebar-left">
+                    <svg class="dialog-icon" viewBox="0 0 16 16">
+                        <rect width="16" height="16" fill="#800000"/>
+                        <text x="2" y="12" fill="#fff" font-size="10" font-family="monospace">!</text>
+                    </svg>
+                    <span>Case Briefing</span>
+                </div>
+                <button class="retro-btn" style="padding:0 8px;min-width:auto;height:20px;font-size:11px;" onclick="closePreview()">✕</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-case-header">
+                    <div class="popup-case-icon" id="previewIcon">🔍</div>
+                    <div>
+                        <div class="popup-case-title" id="previewTitle">Case Title</div>
+                        <div class="popup-case-id" id="previewId">Case #001</div>
+                    </div>
+                </div>
+
+                <div class="popup-tags" id="previewTags"></div>
+
+                <div class="popup-desc-label">📋 Incident Report:</div>
+                <div class="popup-desc" id="previewDesc">Loading description...</div>
+
+                <div class="popup-footer">
+                    <button class="retro-btn" onclick="closePreview()">Cancel</button>
+                    <button class="retro-btn primary" id="btnBegin" onclick="openCase()">▶ Begin Investigation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TASKBAR -->
+    <div id="taskbar">
+        <button class="retro-btn start-btn">
+            <svg width="14" height="14" viewBox="0 0 16 16">
+                <rect width="7" height="7" fill="#f87171"/>
+                <rect x="8" width="7" height="7" fill="#4ade80"/>
+                <rect y="8" width="7" height="7" fill="#60a5fa"/>
+                <rect x="8" y="8" width="7" height="7" fill="#facc15"/>
+            </svg>
+            <span>Start</span>
+        </button>
+        <div class="taskbar-tray" id="clockTray">12:00 PM</div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8081/api';
+        let selectedCaseId = null;
+        let selectedCaseData = null;
+
+        // Clock
+        const clockEl = document.getElementById('clockTray');
+        const tick = () => clockEl.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        tick(); setInterval(tick, 1000);
+
+        const CRIME_ICONS = {
+            'theft': '💰', 'robbery': '💰', 'murder': '🔪', 'homicide': '🔪',
+            'fraud': '📄', 'forgery': '📄', 'assault': '👊', 'vandalism': '🪟',
+            'blackmail': '✉️', 'extortion': '✉️', 'default': '🔍'
+        };
+
+        const DIFFICULTY_CLASS = {
+            'Easy': 'green', 'Normal': '', 'Hard': 'red', 'Expert': 'red', 'Medium': ''
+        };
+
+        function getCrimeIcon(crimeType) {
+            if (!crimeType) return '🔍';
+            const lower = crimeType.toLowerCase();
+            for (const [key, icon] of Object.entries(CRIME_ICONS)) {
+                if (lower.includes(key)) return icon;
+            }
+            return '🔍';
+        }
+
+        async function fetchWithFallback(endpoint) {
+            try {
+                const res = await fetch(`http://localhost:8081/api${endpoint}`);
+                if (res.ok) return res;
+            } catch (e) {}
+            return await fetch(`http://127.0.0.1:8081/api${endpoint}`);
+        }
+
+        async function loadCases() {
+            const list = document.getElementById('chapterList');
+            try {
+                const res = await fetchWithFallback('/cases');
+                if (!res.ok) throw new Error('API error');
+                const cases = await res.json();
+
+                list.innerHTML = '';
+
+                if (!cases.length) {
+                    list.innerHTML = '<div class="chapter-loading">No cases found.</div>';
+                    return;
+                }
+
+                cases.forEach(c => {
+                    const icon = getCrimeIcon(c.crimeType);
+                    const item = document.createElement('div');
+                    item.className = 'chapter-item';
+                    item.dataset.id = c.caseId;
+                    item.innerHTML = `
+                        <span class="chapter-icon">${icon}</span>
+                        <span class="chapter-info">
+                            <div class="chapter-title">${c.title || 'Untitled Case'}</div>
+                            <div class="chapter-meta">${c.crimeType || 'Unknown'} · Case #${String(c.caseId).padStart(3,'0')}</div>
+                        </span>
+                        <span class="chapter-badge">${c.difficulty || 'NORMAL'}</span>
+                    `;
+                    item.addEventListener('click', () => selectCase(c, item));
+                    item.addEventListener('dblclick', () => previewCase());
+                    list.appendChild(item);
+                });
+
+            } catch (e) {
+                list.innerHTML = `
+                    <div style="padding:16px;text-align:center;color:#c00;font-family:monospace;font-size:11px;">
+                        <div>Failed to connect to backend server.</div>
+                        <div style="margin-top:6px;color:#555;font-size:10px;">Verify that backend is running on port 8081.</div>
+                    </div>
+                `;
+            }
+        }
+
+        function selectCase(caseData, el) {
+            selectedCaseId = caseData.caseId;
+            selectedCaseData = caseData;
+            document.querySelectorAll('.chapter-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('btnOpen').disabled = false;
+        }
+
+        async function previewCase() {
+            if (!selectedCaseId) return;
+
+            // Fetch full case details for description
+            let caseData = selectedCaseData;
+            try {
+                const res = await fetchWithFallback(`/cases/${selectedCaseId}`);
+                if (res.ok) caseData = await res.json();
+            } catch (e) {}
+
+            const icon = getCrimeIcon(caseData.crimeType);
+
+            document.getElementById('previewIcon').textContent = icon;
+            document.getElementById('previewTitle').textContent = caseData.title || 'Untitled';
+            document.getElementById('previewId').textContent = `Case #${String(caseData.caseId).padStart(3, '0')} · ${caseData.crimeType || 'Unknown Crime'}`;
+            document.getElementById('previewDesc').textContent = caseData.description || 'No incident report available.';
+
+            // Tags
+            const tagsEl = document.getElementById('previewTags');
+            tagsEl.innerHTML = '';
+            if (caseData.difficulty) {
+                const cls = DIFFICULTY_CLASS[caseData.difficulty] || '';
+                tagsEl.innerHTML += `<span class="popup-tag ${cls}">${caseData.difficulty}</span>`;
+            }
+            if (caseData.crimeType) {
+                tagsEl.innerHTML += `<span class="popup-tag">${caseData.crimeType}</span>`;
+            }
+            if (caseData.crimeDate) {
+                tagsEl.innerHTML += `<span class="popup-tag gold">📅 ${caseData.crimeDate}</span>`;
+            }
+
+            document.getElementById('previewOverlay').classList.add('active');
+        }
+
+        function closePreview() {
+            document.getElementById('previewOverlay').classList.remove('active');
+        }
+
+        function openCase() {
+            if (!selectedCaseId) return;
+            localStorage.setItem('qc_active_case', selectedCaseId);
+            window.location.href = 'index.html';
+        }
+
+        // Close popup on overlay click
+        document.getElementById('previewOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('previewOverlay')) closePreview();
+        });
+
+        // Keyboard: Enter = open/preview, Escape = close preview
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePreview();
+            if (e.key === 'Enter') {
+                if (document.getElementById('previewOverlay').classList.contains('active')) {
+                    openCase();
+                } else if (selectedCaseId) {
+                    previewCase();
+                }
+            }
+        });
+
+        loadCases();
+    </script>
+
+</body>
+</html>

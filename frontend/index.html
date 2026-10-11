@@ -5,12 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Query and Clue — Minor Crimes OS</title>
-    <link rel="stylesheet" href="css/style.css?v=5.7">
+    <link rel="stylesheet" href="css/style.css?v=5.8">
     <script>
-        // Route unauthenticated visits to Windows XP Logon screen first
-        if (!localStorage.getItem('qc_detective_name')) {
-            window.location.replace('login.html');
-        } else if (!sessionStorage.getItem('qc_entered') && !window.location.search.includes('desktop')) {
+        // Route new sessions to Welcome / Chapter Select screen first
+        if (!sessionStorage.getItem('qc_entered') && !window.location.search.includes('desktop')) {
             window.location.replace('welcome.html');
         }
         // Thin bootstrap — app.js overrides these once loaded
@@ -600,8 +598,8 @@
         <ellipse cx="75" cy="85" rx="8" ry="6" fill="#d97706" stroke="#000" stroke-width="2"/>
     </svg>
 
-    <script src="js/config.js?v=5.7"></script>
-    <script src="js/app.js?v=5.7"></script>
+    <script src="js/config.js?v=5.8"></script>
+    <script src="js/app.js?v=5.8"></script>
     <script>
     (function() {
         if (typeof window.initResizableWindows === 'function') {

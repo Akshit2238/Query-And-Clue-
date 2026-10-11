@@ -1,6 +1,13 @@
 package com.queryandclue.backend.controller;
 
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,9 +18,14 @@ import com.queryandclue.backend.service.AICaseGeneratorService;
 import com.queryandclue.backend.service.CaseSaveService;
 import com.queryandclue.backend.validator.CaseValidator;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @RestController
 @RequestMapping("/api/generated-case")
 public class GeneratedCaseController {
+
+    private static final int DAILY_GENERATION_LIMIT = 5;
+    private final Map<String, AtomicInteger> dailyGenerations = new ConcurrentHashMap<>();
 
     private final CaseValidator caseValidator = new CaseValidator();
     private final AICaseGeneratorService aiCaseGeneratorService;
@@ -27,26 +39,60 @@ public class GeneratedCaseController {
         this.caseSaveService = caseSaveService;
     }
 
+    private String getClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+    }
+
+    private int getRemaining(String clientIp) {
+        String key = clientIp + ":" + LocalDate.now();
+        AtomicInteger counter = dailyGenerations.get(key);
+        int used = counter != null ? counter.get() : 0;
+        return Math.max(0, DAILY_GENERATION_LIMIT - used);
+    }
+
+    @GetMapping("/limit")
+    public ResponseEntity<Map<String, Object>> getLimit(HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        int remaining = getRemaining(clientIp);
+        return ResponseEntity.ok(Map.of(
+            "limit", DAILY_GENERATION_LIMIT,
+            "remaining", remaining
+        ));
+    }
+
     @PostMapping("/generate")
     public GeneratedCase generateCase() {
         return aiCaseGeneratorService.generateCase();
     }
 
     @PostMapping("/generate-and-save")
-    public ResponseEntity<?> generateAndSaveCase() {
+    public ResponseEntity<?> generateAndSaveCase(HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        String key = clientIp + ":" + LocalDate.now();
+        AtomicInteger counter = dailyGenerations.computeIfAbsent(key, k -> new AtomicInteger(0));
 
-        GeneratedCase generatedCase =
-                aiCaseGeneratorService.generateCase();
+        if (counter.get() >= DAILY_GENERATION_LIMIT) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+                "error", "DAILY_LIMIT_EXCEEDED",
+                "message", "Daily generation limit reached. You can only generate up to 5 cases per day. Please return tomorrow!"
+            ));
+        }
 
-        boolean valid =
-                caseValidator.validate(generatedCase);
+        GeneratedCase generatedCase = aiCaseGeneratorService.generateCase();
 
+        boolean valid = caseValidator.validate(generatedCase);
         if (!valid) {
             return ResponseEntity.badRequest()
-                    .body(java.util.Map.of("error", "AI generated case was invalid and was not saved."));
+                    .body(Map.of("error", "AI generated case was invalid and was not saved."));
         }
 
         Case savedCase = caseSaveService.saveGeneratedCase(generatedCase);
+        counter.incrementAndGet();
+
         return ResponseEntity.ok(savedCase);
     }
 }

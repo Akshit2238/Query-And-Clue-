@@ -964,9 +964,11 @@ async function loadCaseList() {
         caseGrid.innerHTML = `<div style="font-size:11px;color:#c00;">Error: ${esc(e.message)}</div>`;
     }
 
+    // Daily Generation Limit Logic
+    updateGenerateButtonState();
+
     // Wire up Generate Case button each time list is refreshed
     const btnGen = document.getElementById('btnGenerateCase');
-    const genStatus = document.getElementById('generateCaseStatus');
     if (btnGen && !btnGen._wired) {
         btnGen._wired = true;
         btnGen.addEventListener('click', generateCase);
@@ -974,13 +976,52 @@ async function loadCaseList() {
 }
 
 // =========================================
-// AI CASE GENERATION
+// AI CASE GENERATION (DAILY LIMIT: 5)
 // =========================================
+
+const DAILY_MAX_GENERATIONS = 5;
+
+function getDailyGenCount() {
+    const today = new Date().toISOString().split('T')[0];
+    const savedDate = localStorage.getItem('qc_gen_date');
+    if (savedDate !== today) {
+        localStorage.setItem('qc_gen_date', today);
+        localStorage.setItem('qc_gen_count', '0');
+        return 0;
+    }
+    return parseInt(localStorage.getItem('qc_gen_count') || '0', 10);
+}
+
+function updateGenerateButtonState() {
+    const btn = document.getElementById('btnGenerateCase');
+    const status = document.getElementById('generateCaseStatus');
+    const used = getDailyGenCount();
+    const remaining = Math.max(0, DAILY_MAX_GENERATIONS - used);
+
+    if (btn) {
+        if (remaining <= 0) {
+            btn.disabled = true;
+            btn.textContent = '🔒 Daily Limit Reached (0/5)';
+            if (status) {
+                status.style.color = '#c00';
+                status.textContent = 'You have reached the daily limit of 5 cases. Resets tomorrow!';
+            }
+        } else {
+            btn.disabled = false;
+            btn.textContent = `✦ Generate New Case (AI) [${remaining}/5 left today]`;
+        }
+    }
+}
 
 async function generateCase() {
     const btn = document.getElementById('btnGenerateCase');
     const status = document.getElementById('generateCaseStatus');
     if (!btn || !status) return;
+
+    if (getDailyGenCount() >= DAILY_MAX_GENERATIONS) {
+        updateGenerateButtonState();
+        return;
+    }
 
     btn.disabled = true;
     btn.textContent = '⏳ Generating...';
@@ -1005,13 +1046,20 @@ async function generateCase() {
         if (!res.ok) {
             const err = await res.text();
             let msg = err;
-            try { msg = JSON.parse(err).error || err; } catch(e) {}
+            try {
+                const parsed = JSON.parse(err);
+                msg = parsed.message || parsed.error || err;
+            } catch(e) {}
             throw new Error(msg || `HTTP ${res.status}`);
         }
 
         const newCase = await res.json();
+
+        // Increment daily count
+        localStorage.setItem('qc_gen_count', String(getDailyGenCount() + 1));
+
         status.style.color = '#166534';
-        status.textContent = `✔ Case #${newCase.caseId || '?'} "${newCase.title || 'Generated'}" added! Loading...`;
+        status.textContent = `✔ Case "${newCase.title || 'Generated'}" added! Loading...`;
 
         await loadCaseList();
 
@@ -1025,8 +1073,7 @@ async function generateCase() {
         status.style.color = '#c00';
         status.textContent = `✘ Error: ${e.message}`;
     } finally {
-        btn.disabled = false;
-        btn.textContent = '✦ Generate New Case (AI)';
+        updateGenerateButtonState();
     }
 }
 

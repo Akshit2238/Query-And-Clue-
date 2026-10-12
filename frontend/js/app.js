@@ -39,8 +39,39 @@ function init() {
     initSettings();
     initBrowser();
     initDetectiveBadge();
+    initGuide();
 
     loadCaseContext(caseId);
+}
+
+function initGuide() {
+    document.querySelectorAll('.btn-paste-query').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const template = btn.getAttribute('data-sql') || '';
+            const activeId = caseId || 1;
+            const finalSql = template.replace(/\{CASE_ID\}/g, activeId);
+            const sqlInput = document.getElementById('sqlQuery');
+            if (sqlInput) {
+                sqlInput.value = finalSql;
+                if (typeof tabState !== 'undefined' && tabState[currentTabName]) {
+                    tabState[currentTabName].query = finalSql;
+                }
+            }
+            bringToFront('win-search');
+            if (sqlInput) {
+                sqlInput.focus();
+                sqlInput.select();
+            }
+        });
+    });
+
+    // Auto-open guide for first-time detectives
+    if (!localStorage.getItem('qc_guide_seen')) {
+        setTimeout(() => {
+            bringToFront('win-guide');
+            localStorage.setItem('qc_guide_seen', 'true');
+        }, 350);
+    }
 }
 
 if (document.readyState === 'loading') {

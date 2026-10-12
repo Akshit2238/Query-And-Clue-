@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Query &amp; Clue — Select Chapter</title>
-    <script src="js/config.js?v=6.2"></script>
+    <script src="js/config.js?v=6.3"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
@@ -273,6 +273,7 @@
             </div>
 
             <div class="dialog-footer">
+                <button class="retro-btn" onclick="openWelcomeGuide()">📖 How to Play</button>
                 <button class="retro-btn" onclick="location.reload()">Refresh</button>
                 <button class="retro-btn primary" id="btnOpen" disabled onclick="previewCase()">Open →</button>
             </div>
@@ -309,6 +310,47 @@
                 <div class="popup-footer">
                     <button class="retro-btn" onclick="closePreview()">Cancel</button>
                     <button class="retro-btn primary" id="btnBegin" onclick="openCase()">▶ Begin Investigation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOW TO PLAY GUIDE MODAL -->
+    <div class="popup-overlay" id="welcomeGuideOverlay">
+        <div class="popup" style="width: 520px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="popup-titlebar" style="background: linear-gradient(90deg, #1e3a8a, #0284c7);">
+                <div class="popup-titlebar-left">
+                    <span style="font-size: 13px;">📖</span>
+                    <span>How to Play &amp; Navigate — Detective Handbook</span>
+                </div>
+                <button class="retro-btn" style="padding:0 8px;min-width:auto;height:20px;font-size:11px;" onclick="closeWelcomeGuide()">✕</button>
+            </div>
+            <div class="popup-body" style="overflow-y: auto; font-size: 11px; line-height: 1.5; color: #1e293b;">
+                <div style="background: #eff6ff; border-left: 3px solid #0284c7; padding: 6px 10px; margin-bottom: 10px;">
+                    <strong>The Mission:</strong> You are Detective Miller. Solve cases by querying database tables using real SQL to uncover the suspect whose alibi is a lie!
+                </div>
+
+                <div style="font-weight: bold; color: #000080; margin-bottom: 4px;">🎮 5 Steps to Close Any Case:</div>
+                <ol style="padding-left: 16px; margin-bottom: 10px; display:flex; flex-direction:column; gap:4px;">
+                    <li><strong>1. Pick a Case:</strong> Select an active chapter and click <em>Begin Investigation</em>.</li>
+                    <li><strong>2. Check the Evidence:</strong> Open <strong>Clues</strong> to read forensic reports and inspect recovered items.</li>
+                    <li><strong>3. Review the Suspects:</strong> Open <strong>Suspects</strong> to see everyone's motive and claimed alibi.</li>
+                    <li><strong>4. Run SQL Queries:</strong> Open <strong>Search Tables</strong> and run queries like:
+                        <div style="background:#f1f5f9; padding:4px 6px; font-family:monospace; margin:3px 0; border:1px solid #cbd5e1;">SELECT * FROM suspects WHERE case_id = 1;</div>
+                        <div style="background:#f1f5f9; padding:4px 6px; font-family:monospace; margin:3px 0; border:1px solid #cbd5e1;">SELECT * FROM access_logs WHERE case_id = 1;</div>
+                    </li>
+                    <li><strong>5. Catch the Lie &amp; Arrest:</strong> Compare what suspects claimed vs what the access logs or phone records prove. Open <strong>Arrest Warrant</strong> to arrest the guilty suspect!</li>
+                </ol>
+
+                <div style="font-weight: bold; color: #000080; margin-bottom: 4px;">💡 Desktop Tips:</div>
+                <ul style="padding-left: 16px; display:flex; flex-direction:column; gap:3px;">
+                    <li>Use the <strong>Bottom Taskbar</strong> or <strong>Left Desktop Icons</strong> to open/minimize windows.</li>
+                    <li>Clicking a taskbar button minimizes or brings the window to front.</li>
+                    <li>Use the <strong>Notepad</strong> to take notes and compare suspect timelines.</li>
+                </ul>
+
+                <div class="popup-footer" style="margin-top: 10px;">
+                    <button class="retro-btn primary" onclick="closeWelcomeGuide()" style="width: 100%;">Understood, Let's Play!</button>
                 </div>
             </div>
         </div>
@@ -473,9 +515,20 @@
             window.location.href = 'index.html';
         }
 
+        function openWelcomeGuide() {
+            document.getElementById('welcomeGuideOverlay').classList.add('active');
+        }
+
+        function closeWelcomeGuide() {
+            document.getElementById('welcomeGuideOverlay').classList.remove('active');
+        }
+
         // Close popup on overlay click
         document.getElementById('previewOverlay').addEventListener('click', (e) => {
             if (e.target === document.getElementById('previewOverlay')) closePreview();
+        });
+        document.getElementById('welcomeGuideOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('welcomeGuideOverlay')) closeWelcomeGuide();
         });
 
         // Keyboard: Enter = open/preview, Escape = close preview

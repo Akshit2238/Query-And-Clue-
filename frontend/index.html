@@ -31,6 +31,18 @@
         <!-- DESKTOP ICONS (LEFT SIDEBAR) -->
         <div class="desktop-icons">
 
+            <button class="icon-btn" id="btn-icon-guide" data-window="win-guide" onclick="openWindow('win-guide')">
+                <svg class="icon-svg" viewBox="0 0 36 36">
+                    <rect x="5" y="4" width="26" height="28" rx="2" fill="#1e3a8a" stroke="#000" stroke-width="1.8"/>
+                    <rect x="8" y="7" width="20" height="22" fill="#ffffff" stroke="#000" stroke-width="1"/>
+                    <circle cx="18" cy="14" r="5" fill="#f59e0b"/>
+                    <text x="15" y="17" font-size="9" font-weight="bold" fill="#ffffff" font-family="sans-serif">?</text>
+                    <line x1="11" y1="22" x2="25" y2="22" stroke="#1e3a8a" stroke-width="2"/>
+                    <line x1="11" y1="26" x2="22" y2="26" stroke="#64748b" stroke-width="1.5"/>
+                </svg>
+                <span>guide</span>
+            </button>
+
             <button class="icon-btn" id="btn-icon-cases" data-window="win-manual" onclick="openWindow('win-manual')">
                 <svg class="icon-svg" viewBox="0 0 36 36">
                     <path d="M3 8 h10 l3 3 h17 v21 h-30 z" fill="#d97706" stroke="#000" stroke-width="1.8"/>
@@ -174,6 +186,131 @@
 
         </div>
 
+
+        <!-- WINDOW 0: FIELD GUIDE / HOW TO PLAY -->
+        <div class="retro-window hidden" id="win-guide" style="width: 640px; height: 500px; top: 40px; left: 160px;">
+            <div class="titlebar" style="background: linear-gradient(90deg, #1e3a8a, #0284c7);">
+                <div class="titlebar-text">
+                    <svg width="14" height="14" viewBox="0 0 16 16"><rect width="16" height="16" fill="#f59e0b"/><text x="4" y="12" fill="#000" font-size="11" font-weight="bold">?</text></svg>
+                    <span>Detective Field Manual — How to Play &amp; Navigate</span>
+                </div>
+                <div class="titlebar-controls">
+                    <button class="win-btn btn-min">_</button>
+                    <button class="win-btn btn-close" data-target="win-guide">X</button>
+                </div>
+            </div>
+            <div class="window-body" style="background: #c0c0c0; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                <div class="sunken-panel" style="background: #fff; padding: 14px; flex: 1; overflow-y: auto; font-size: 12px; line-height: 1.55; color: #1e293b;">
+                    <div style="display:flex; align-items:center; gap:10px; border-bottom: 2px solid #000080; padding-bottom: 8px; margin-bottom: 12px;">
+                        <span style="font-size: 26px;">🕵️</span>
+                        <div>
+                            <h2 style="margin: 0; color: #000080; font-size: 15px;">WELCOME TO MINOR CRIMES OS</h2>
+                            <div style="font-size: 11px; color: #64748b;">The official field handbook for rookie detectives</div>
+                        </div>
+                    </div>
+
+                    <div style="background: #eff6ff; border-left: 4px solid #0284c7; padding: 8px 12px; margin-bottom: 14px; font-size: 11px;">
+                        <strong>Game Objective:</strong> A crime has occurred in Los Zorangeles. One suspect is lying. Use SQL queries to explore the police database, discover contradictory alibis, and submit an arrest warrant to win!
+                    </div>
+
+                    <h3 style="color: #000080; margin: 12px 0 6px 0; font-size: 13px;">🧭 1. Desktop &amp; Taskbar Navigation</h3>
+                    <p style="margin-bottom: 6px;">Use either the <strong>Left Desktop Icons</strong> or the <strong>Bottom Taskbar Buttons</strong> to toggle windows:</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 2px;">
+                            <strong style="color: #0f172a;">📁 Cases</strong>
+                            <div style="font-size: 11px; color: #475569;">Read current case details, switch to another crime, or generate procedural AI cases.</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 2px;">
+                            <strong style="color: #0f172a;">📁 Clues</strong>
+                            <div style="font-size: 11px; color: #475569;">Inspect forensic lab items, crime scenes, recovery locations, and physical evidence.</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 2px;">
+                            <strong style="color: #0f172a;">👤 Suspects</strong>
+                            <div style="font-size: 11px; color: #475569;">Review suspect occupations, relationship to victim, motives, and claimed alibis.</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 2px;">
+                            <strong style="color: #0f172a;">🔍 Search Tables (SQL)</strong>
+                            <div style="font-size: 11px; color: #475569;">Your primary investigative tool! Run SQL queries against evidence, access logs, and phone logs.</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 2px;">
+                            <strong style="color: #0f172a;">👮 Arrest Warrant</strong>
+                            <div style="font-size: 11px; color: #475569;">Once you uncover the contradictory evidence, file the official warrant to solve the case!</div>
+                        </div>
+                        <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 2px;">
+                            <strong style="color: #0f172a;">📝 Notepad</strong>
+                            <div style="font-size: 11px; color: #475569;">6-page detective scratchpad with highlighters to compare suspect times and log queries.</div>
+                        </div>
+                    </div>
+
+                    <h3 style="color: #000080; margin: 12px 0 6px 0; font-size: 13px;">🔍 2. Database Tables You Can Query</h3>
+                    <p style="margin-bottom: 6px;">In <strong>Search Tables</strong>, write standard <code>SELECT</code> statements. Available tables:</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 12px; font-family: monospace;">
+                        <tr style="background: #e2e8f0; text-align: left;">
+                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">Table Name</th>
+                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">Columns</th>
+                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">What to Look For</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">suspects</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">name, occupation, motive, alibi</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">What each person claims they were doing</td>
+                        </tr>
+                        <tr style="background: #f8fafc;">
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">access_logs</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">location, access_time, person_id</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Keycard swipe times (proves who was actually there)</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">phone_records</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">caller, receiver, call_time</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Call times that disprove dinner or alibi claims</td>
+                        </tr>
+                        <tr style="background: #f8fafc;">
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">evidence</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">evidence_name, found_at, description</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Fingerprints, weapons, and forensics</td>
+                        </tr>
+                    </table>
+
+                    <h3 style="color: #000080; margin: 12px 0 6px 0; font-size: 13px;">⚡ 3. 1-Click Starter Queries</h3>
+                    <p style="margin-bottom: 6px; font-size: 11px;">Click any button below to immediately paste the query into your active Search tab:</p>
+                    <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
+                            <code style="font-size:11px;">SELECT * FROM suspects WHERE case_id = {CASE_ID};</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT * FROM suspects WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
+                            <code style="font-size:11px;">SELECT * FROM access_logs WHERE case_id = {CASE_ID};</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT * FROM access_logs WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
+                            <code style="font-size:11px;">SELECT * FROM phone_records WHERE case_id = {CASE_ID};</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT * FROM phone_records WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
+                            <code style="font-size:11px;">SELECT * FROM evidence WHERE case_id = {CASE_ID};</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT * FROM evidence WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                        </div>
+                    </div>
+
+                    <h3 style="color: #000080; margin: 12px 0 6px 0; font-size: 13px;">🎯 4. Step-by-Step Walkthrough to Win</h3>
+                    <ol style="padding-left: 18px; margin: 0; font-size: 11px; display:flex; flex-direction:column; gap:6px;">
+                        <li><strong>Step 1:</strong> Read the victim and crime report in <strong>Clues</strong>. Note the time of death or crime.</li>
+                        <li><strong>Step 2:</strong> Check each suspect's <strong>Alibi</strong> in <strong>Suspects</strong> (e.g. "Claims they were at home at 21:00").</li>
+                        <li><strong>Step 3:</strong> Query <code>access_logs</code> or <code>phone_records</code> for that time. Look for someone who lied about their whereabouts!</li>
+                        <li><strong>Step 4:</strong> Open <strong>Arrest</strong>, select the suspect, explain why their alibi fails, and click <strong>Submit Arrest Warrant</strong>.</li>
+                    </ol>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+                    <span style="font-size: 11px; color: #475569;">💡 Tip: You can reopen this guide anytime from the taskbar or desktop!</span>
+                    <button class="retro-btn primary" onclick="document.getElementById('win-guide').classList.add('hidden');openWindow('win-search');" style="font-weight: bold; padding: 4px 16px;">
+                        Open SQL Search →
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- WINDOW 1: SEARCH TABLES (SQL QUERY EDITOR) -->
         <div class="retro-window hidden" id="win-search">
@@ -572,18 +709,19 @@
 
     <!-- BOTTOM TASKBAR -->
     <div id="taskbar">
-        <button class="retro-btn start-btn" id="startBtn" onclick="openWindow('win-manual')">
+        <button class="retro-btn start-btn" id="startBtn">
             <svg width="14" height="14" viewBox="0 0 16 16"><rect width="7" height="7" fill="#f87171"/><rect x="8" width="7" height="7" fill="#4ade80"/><rect y="8" width="7" height="7" fill="#60a5fa"/><rect x="8" y="8" width="7" height="7" fill="#facc15"/></svg>
             <span>Start</span>
         </button>
 
         <div class="taskbar-items" id="taskbarItems">
-            <div class="task-item" data-window="win-manual" onclick="openWindow('win-manual')">📁 Cases</div>
-            <div class="task-item" data-window="win-search" onclick="openWindow('win-search')">🔍 Search</div>
-            <div class="task-item" data-window="win-clues" onclick="openWindow('win-clues')">📁 Clues</div>
-            <div class="task-item" data-window="win-suspects" onclick="openWindow('win-suspects')">👤 Suspects</div>
-            <div class="task-item" data-window="win-arrest" onclick="openWindow('win-arrest')">👮 Arrest</div>
-            <div class="task-item" data-window="win-notepad" onclick="openWindow('win-notepad')">📝 Notepad</div>
+            <div class="task-item" data-window="win-guide">📖 Guide</div>
+            <div class="task-item" data-window="win-manual">📁 Cases</div>
+            <div class="task-item" data-window="win-search">🔍 Search</div>
+            <div class="task-item" data-window="win-clues">📁 Clues</div>
+            <div class="task-item" data-window="win-suspects">👤 Suspects</div>
+            <div class="task-item" data-window="win-arrest">👮 Arrest</div>
+            <div class="task-item" data-window="win-notepad">📝 Notepad</div>
         </div>
 
         <div id="activeCaseLabel" style="font-size: 11px; font-weight: bold; color: #000080; background: #ffffff; border-top: 1px solid #808080; border-left: 1px solid #808080; border-bottom: 1px solid #fff; border-right: 1px solid #fff; padding: 2px 8px; margin-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;">
@@ -623,8 +761,8 @@
         <ellipse cx="75" cy="85" rx="8" ry="6" fill="#d97706" stroke="#000" stroke-width="2"/>
     </svg>
 
-    <script src="js/config.js?v=6.2"></script>
-    <script src="js/app.js?v=6.2"></script>
+    <script src="js/config.js?v=6.3"></script>
+    <script src="js/app.js?v=6.3"></script>
     <script>
     (function() {
         if (typeof window.initResizableWindows === 'function') {

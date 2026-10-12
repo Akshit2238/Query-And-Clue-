@@ -2,6 +2,8 @@ package com.queryandclue.backend.config;
 
 import java.io.IOException;
 
+import org.springframework.lang.NonNull;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -19,7 +21,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class CorsConfig implements WebMvcConfigurer {
 
     @Override
-    public void addCorsMappings(CorsRegistry registry) {
+    public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
@@ -32,7 +34,7 @@ public class CorsConfig implements WebMvcConfigurer {
     public OncePerRequestFilter privateNetworkCorsFilter() {
         return new OncePerRequestFilter() {
             @Override
-            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
                     throws ServletException, IOException {
                 String origin = request.getHeader("Origin");
                 response.setHeader("Access-Control-Allow-Origin", origin != null && !origin.isEmpty() ? origin : "*");

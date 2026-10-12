@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+
 import com.queryandclue.backend.entity.Case;
 import com.queryandclue.backend.generated.GeneratedCase;
 import com.queryandclue.backend.service.AICaseGeneratorService;
@@ -62,11 +63,6 @@ public class GeneratedCaseController {
             "limit", DAILY_GENERATION_LIMIT,
             "remaining", remaining
         ));
-    }
-
-    @PostMapping("/generate")
-    public GeneratedCase generateCase() {
-        return aiCaseGeneratorService.generateCase();
     }
 
     @PostMapping("/generate-and-save")

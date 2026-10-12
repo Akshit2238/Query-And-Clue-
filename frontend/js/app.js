@@ -662,7 +662,7 @@ async function loadCaseContext(id) {
     ]);
     loadCaseList();
 
-    if (typeof initTabs === 'function') initTabs();
+    initTabs();
 }
 
 
@@ -1308,4 +1308,3 @@ window.loadAccusationSuspects = loadAccusationSuspects;
 window.loadCaseList = loadCaseList;
 window.loadCaseContext = loadCaseContext;
 window.initResizableWindows = initResizableWindows;
-window.toggleMaximize = toggleMaximize;

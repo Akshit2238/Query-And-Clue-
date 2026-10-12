@@ -89,9 +89,13 @@ public class CaseSaveService {
             newCase.setCrimeDate(LocalDate.parse(cd));
         }
 
+        int nextId = caseRepository.findMaxCaseId() + 1;
+        newCase.setCaseId(nextId);
+
         Case savedCase = caseRepository.save(newCase);
 
         int caseId = savedCase.getCaseId();
+
 
 
         // =========================

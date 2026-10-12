@@ -1,92 +1,137 @@
-# Query & Clue — SQL Detective Game
+# 🕵️ Query & Clue — Minor Crimes OS
 
-**Every query reveals a clue.**
+[![Live Demo](https://img.shields.io/badge/Demo-Live_on_Render-blue?style=flat&logo=render)](https://query-and-clue-9sag.onrender.com/welcome.html)
+[![Java 21](https://img.shields.io/badge/Java-21-orange?style=flat&logo=openjdk)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-brightgreen?style=flat&logo=springboot)](https://spring.io/projects/spring-boot)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-blue?style=flat&logo=mysql)](https://www.mysql.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)
 
-Query & Clue is an interactive detective investigation game where players solve fictional cases by exploring crime records and using SQL queries to uncover connections between suspects, evidence, timelines, phone records, and transactions.
+> *"In the city of Bits & Bytes, the truth isn't found in confessions — it's found in the tables."*
 
-Instead of simply reading clues, players investigate the case database, compare information, and submit a final accusation supported by their findings.
+**Query & Clue** is an interactive, retro Windows XP–themed detective game where you solve criminal cases by writing **real SQL queries** against actual databases. Analyze crime scenes, cross-reference suspect alibis, track phone records, and file arrest warrants when you've cracked the case.
 
-## Live Demo
+---
 
-- **Website:** https://query-and-clue-9sag.onrender.com/
-- **Chapter Selection:** https://query-and-clue-9sag.onrender.com/welcome.html
+## 🌐 Live Demo
 
-## Features
+- **Game Desktop:** [https://query-and-clue-9sag.onrender.com/](https://query-and-clue-9sag.onrender.com/)
+- **Case Select:** [https://query-and-clue-9sag.onrender.com/welcome.html](https://query-and-clue-9sag.onrender.com/welcome.html)
 
-- **SQL investigation:** Search case records with SQL queries.
-- **Case files:** Select and investigate cases.
-- **Suspect investigation:** Review suspect information and alibis.
-- **Forensic clues:** Inspect evidence connected to an investigation.
-- **Investigation records:** Work with timeline events, access logs, phone records, and transactions.
-- **Query history:** Review previous searches.
-- **Notepad:** Keep track of theories and contradictions.
-- **Final accusation:** Submit a suspect and explain the reasoning behind the decision.
-- **AI case generation:** The project includes an AI case-generation flow using the Groq API, with generated data intended to be validated before being saved.
+*(Note: Render free tier instances spin down after 15 minutes of inactivity. If the first query takes ~40s to load, please allow the backend container a moment to wake up).*
 
-> Feature availability may depend on the current deployment and backend status.
+---
 
-## Tech Stack
+## 📸 Key Features
 
-- **Frontend:** HTML, CSS, JavaScript
-- **Backend:** Java, Spring Boot
-- **Database:** TiDB Cloud (MySQL-compatible cloud database)
-- **Query language:** SQL
-- **AI integration:** Groq API
-- **Application deployment:** Render
-- **Source control:** GitHub
+| Feature | Description |
+|---|---|
+| 🖥️ **Retro Windows XP OS** | Authentic draggable & resizable windows, taskbar, start menu, Bliss wallpaper, and sound effects. |
+| 🔍 **Live SQL Engine** | Execute real `SELECT` queries against case databases with sub-second execution timing. |
+| 📑 **5 Multi-Tab Query Console** | Work like a real developer with 5 persistent query tabs and saved query history. |
+| 📂 **Suspect & Clue Explorer** | Dedicated evidence viewer, victim reports, and suspect profile cards. |
+| ⚖️ **Arrest Warrant System** | Accuse suspects, provide motive and evidence, and get instant verdict verification. |
+| 🤖 **AI Case Generator** | Generate fresh, dynamic mystery cases using Google Gemini / Groq AI (5/day quota). |
+| 🎵 **8-bit Detective Synth** | Built-in retro audio player with authentic chiptune detective tracks. |
+| 📝 **Detective Notepad** | In-OS persistent scratchpad to write notes, clues, and SQL snippets. |
 
-## Database Overview
+---
 
-The database is designed around related investigation records, including:
+## 🎮 How to Play
 
-- Users
-- Cases
-- Victims
-- Suspects
-- Crime scenes
-- Evidence
-- Timeline events
-- Access logs
-- Phone records
-- Transactions
-- Query history
-- Player progress
-- Final accusations
+1. **Pick a Case**: Start at the Case Select screen and choose an active case report.
+2. **Read the Evidence**: Open the **Clues** window to read the incident briefing, victim details, and crime scenes.
+3. **Inspect the Suspects**: Open the **Suspects** window to view everyone connected to the incident.
+4. **Query the Database**: Open **Search Tables** and write SQL queries to discover contradictions in alibis, phone records, and access logs.
+5. **Issue the Warrant**: Open **Arrest Warrant**, select the guilty suspect, explain their motive and method, and submit!
 
-Primary keys and foreign keys connect related records so players can investigate information across a case. TiDB Cloud provides the hosted database; the application backend connects to it using its configured database connection.
+### Available Database Tables
+```sql
+-- Check suspect details & alibis
+SELECT * FROM suspects WHERE case_id = 1;
 
-## How It Works
+-- Check security door logs
+SELECT * FROM access_logs WHERE case_id = 1 ORDER BY access_time ASC;
 
-1. Open the website and select an investigation.
-2. Read the case information and inspect available clues.
-3. Run SQL queries to search the case database.
-4. Compare records and investigate inconsistencies.
-5. Record theories in the notepad.
-6. Submit a final accusation with an explanation.
+-- Check call records
+SELECT * FROM phone_records WHERE case_id = 1;
 
-## Running Locally
+-- Cross-reference evidence
+SELECT * FROM evidence WHERE case_id = 1;
+```
+> ⚠️ **Note**: Only `SELECT` statements are permitted. Mutation queries (`INSERT`, `UPDATE`, `DELETE`, `DROP`) are strictly blocked by the AST policy engine.
 
-The deployed database is hosted on TiDB Cloud, so a local database installation is not necessarily required to run the application if you have access to the configured cloud database.
+---
 
-1. Clone this repository.
-2. Configure the Spring Boot backend to connect to your TiDB Cloud cluster using the connection details and credentials from TiDB Cloud.
-3. Set required environment variables, including `GROQ_API_KEY` if using AI case generation.
-4. Run the Spring Boot backend using the project's configured build setup.
-5. Serve or open the frontend using the setup included in the repository.
+## 🛠️ Tech Stack
 
-Exact commands and configuration values depend on the files and build configuration in the repository. Never commit database passwords, API keys, or other secrets to GitHub.
+- **Frontend**: Vanilla HTML5, CSS3 (Windows XP Design System), Vanilla JavaScript (No heavyweight frameworks).
+- **Backend**: Java 21, Spring Boot 3, Spring Data JPA, JSqlParser (SQL AST Validator).
+- **Database**: MySQL 8.0 / TiDB Cloud (Dual-datasource architecture: Read-Write for game state, Read-Only for player queries).
+- **AI Integration**: AI case generation with automated case schema validation.
+- **Deployment**: Dockerized multi-stage build hosted on Render.
 
-## Configuration and Security
+---
 
-- Keep API keys and database credentials out of source control.
-- Store secrets in environment variables or an appropriate local configuration file excluded from Git.
-- Use the appropriate TiDB Cloud connection settings and credentials.
-- SQL execution should be restricted to permitted queries and handled by the backend; the browser should never connect directly to the database.
+## 🚀 Running Locally
 
-## Project Goal
+### Prerequisites
+- Java 21+ JDK
+- MySQL 8.0+ (or TiDB Cloud connection)
+- Maven (or use included `./mvnw`)
 
-Query & Clue combines practical SQL learning with detective-style problem solving. The goal is to make database exploration more engaging by giving each query a purpose in the investigation.
+### 1. Clone the repository
+```bash
+git clone https://github.com/Akshit2238/Query-And-Clue-.git
+cd Query-And-Clue-
+```
 
-## Author
+### 2. Configure Database & Environment
+Create a database named `query_clue` in MySQL and set the environment variables:
+```bash
+export DB_URL="jdbc:mysql://localhost:3306/query_clue"
+export DB_USER="root"
+export DB_PASSWORD="your_password"
+export GEMINI_API_KEY="your_api_key"  # Optional, for AI case generator
+```
 
-Developed as a college project.
+### 3. Run the Backend
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+*(On Windows PowerShell: `.\mvnw.cmd spring-boot:run`)*
+
+### 4. Launch the Frontend
+Open `frontend/welcome.html` in any modern web browser or serve via a local web server:
+```bash
+npx serve frontend
+```
+
+---
+
+## 📡 REST API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/cases` | List all available detective cases |
+| `GET` | `/api/cases/{id}` | Get full case dossier and victim briefing |
+| `GET` | `/api/cases/{id}/suspects` | Get list of suspects for a case |
+| `GET` | `/api/cases/{id}/evidence` | Get discovered physical and forensic evidence |
+| `GET` | `/api/cases/{id}/crime-scenes` | Get crime scene locations |
+| `POST` | `/api/query/execute` | Execute player SQL query with policy validation |
+| `POST` | `/api/cases/{id}/accusation` | Submit arrest warrant accusation |
+| `POST` | `/api/generated-case/generate-and-save` | Procedurally generate an AI mystery case |
+
+---
+
+## 🛡️ Security & Sandboxing
+
+- **AST SQL Parsing**: Incoming queries are parsed into Abstract Syntax Trees using `JSqlParser` to enforce strict `SELECT`-only permissions and prevent SQL injection or table escapes.
+- **Read-Only Datasource**: Player queries run through a dedicated read-only connection pool.
+- **Dual Connection Pool**: Game metadata and player queries are isolated to prevent cross-contamination.
+- **Rate Limiting**: AI case generation is capped to prevent abuse.
+
+---
+
+## 📜 License
+MIT License. Created by [Akshit](https://github.com/Akshit2238). Happy investigating! 🔍

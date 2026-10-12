@@ -7,10 +7,16 @@ const getApiBase = () => window.API_BASE_URL || 'http://localhost:8081/api';
 async function apiFetch(endpoint, options) {
     try {
         const res = await fetch(`${getApiBase()}${endpoint}`, options);
-        if (res.ok) return res;
-    } catch (e) {}
-    return await fetch(`http://127.0.0.1:8081/api${endpoint}`, options);
+        return res;
+    } catch (e) {
+        const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        if (isLocal && !getApiBase().includes('127.0.0.1')) {
+            return await fetch(`http://127.0.0.1:8081/api${endpoint}`, options);
+        }
+        throw e;
+    }
 }
+
 
 let caseId = parseInt(localStorage.getItem('qc_active_case') || '1', 10);
 let cachedCasesList = [];

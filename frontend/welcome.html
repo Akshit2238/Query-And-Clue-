@@ -363,9 +363,14 @@
             const apiBase = (typeof window !== 'undefined' && window.API_BASE_URL) ? window.API_BASE_URL : 'http://localhost:8081/api';
             try {
                 const res = await fetch(`${apiBase}${endpoint}`);
-                if (res.ok) return res;
-            } catch (e) {}
-            return await fetch(`http://127.0.0.1:8081/api${endpoint}`);
+                return res;
+            } catch (e) {
+                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                if (isLocal && !apiBase.includes('127.0.0.1')) {
+                    return await fetch(`http://127.0.0.1:8081/api${endpoint}`);
+                }
+                throw e;
+            }
         }
 
         async function loadCases() {

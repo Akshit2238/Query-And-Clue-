@@ -197,6 +197,7 @@
                 </div>
 
                 <textarea class="sunken-panel sql-area" id="sqlQuery" placeholder="Enter query... (e.g. SELECT * FROM suspects WHERE case_id = 1;)"></textarea>
+                <div id="activeCaseSqlHint" style="font-size: 10px; color: #475569; font-weight: bold; margin-top: 2px; font-family: monospace;">Active Case ID: 1</div>
 
                 <div class="query-toolbar">
                     <button class="retro-btn" id="btnViewHistory">View History</button>
@@ -622,8 +623,8 @@
         <ellipse cx="75" cy="85" rx="8" ry="6" fill="#d97706" stroke="#000" stroke-width="2"/>
     </svg>
 
-    <script src="js/config.js?v=6.0"></script>
-    <script src="js/app.js?v=6.0"></script>
+    <script src="js/config.js?v=6.2"></script>
+    <script src="js/app.js?v=6.2"></script>
     <script>
     (function() {
         if (typeof window.initResizableWindows === 'function') {

@@ -646,17 +646,35 @@ async function loadCaseContext(id) {
     const caseLabel = document.getElementById('activeCaseLabel');
     if (caseLabel) caseLabel.textContent = `Loading case #${caseId}...`;
 
+    if (!Array.isArray(cachedCasesList) || cachedCasesList.length === 0) {
+        try {
+            const listRes = await apiFetch('/cases');
+            if (listRes.ok) cachedCasesList = await listRes.json();
+        } catch (e) {}
+    }
+
+    let displayNum = caseId;
+    if (Array.isArray(cachedCasesList) && cachedCasesList.length > 0) {
+        const idx = cachedCasesList.findIndex(c => Number(c.caseId) === Number(caseId));
+        if (idx >= 0) displayNum = idx + 1;
+    }
+    window.activeCaseIndex = displayNum;
+
+    const sqlInput = document.getElementById('sqlQuery');
+    if (sqlInput) {
+        sqlInput.placeholder = `Enter query... (e.g. SELECT * FROM suspects WHERE case_id = ${caseId};)`;
+    }
+    const sqlHint = document.getElementById('activeCaseSqlHint');
+    if (sqlHint) {
+        sqlHint.textContent = `Active Case SQL ID: ${caseId} (or case_id = ${displayNum})`;
+    }
+
     let caseData = null;
     try {
         const res = await apiFetch(`/cases/${caseId}`);
         if (!res.ok) throw new Error(`Case ${caseId} not found`);
         caseData = await res.json();
-        let displayNum = caseId;
-        if (Array.isArray(cachedCasesList) && cachedCasesList.length > 0) {
-            const idx = cachedCasesList.findIndex(c => Number(c.caseId) === Number(caseId));
-            if (idx >= 0) displayNum = idx + 1;
-        }
-        if (caseLabel) caseLabel.textContent = `Case #${displayNum}: ${caseData.title}`;
+        if (caseLabel) caseLabel.textContent = `Case #${displayNum} [ID: ${caseId}]: ${caseData.title}`;
     } catch (e) {
         console.warn('Could not load case metadata:', e.message);
     }
@@ -1143,6 +1161,12 @@ if (btnExecute) {
             return;
         }
 
+        // Auto-translate sequential case number (e.g. case_id = 2) to actual DB caseId (e.g. 30001)
+        let queryToSend = query;
+        if (window.activeCaseIndex && Number(window.activeCaseIndex) !== Number(caseId)) {
+            queryToSend = queryToSend.replace(new RegExp(`\\bcase_id\\s*=\\s*0*${window.activeCaseIndex}\\b`, 'gi'), `case_id = ${caseId}`);
+        }
+
         statusEl.textContent = 'Executing...';
         statusEl.style.color = '#000';
         btnExecute.disabled = true;
@@ -1151,7 +1175,7 @@ if (btnExecute) {
             const res = await apiFetch(`/query/execute`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ caseId, query })
+                body: JSON.stringify({ caseId, query: queryToSend })
             });
             const data = await res.json();
 

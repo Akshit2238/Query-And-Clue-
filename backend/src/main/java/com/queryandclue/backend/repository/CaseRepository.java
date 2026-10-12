@@ -9,4 +9,7 @@ public interface CaseRepository extends JpaRepository<Case, Integer> {
 
     @Query("SELECT COALESCE(MAX(c.caseId), 0) FROM Case c")
     int findMaxCaseId();
-}
+
+    boolean existsByTitle(String title);
+}
+

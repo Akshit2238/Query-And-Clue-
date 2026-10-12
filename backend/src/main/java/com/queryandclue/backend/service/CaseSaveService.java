@@ -332,6 +332,10 @@ public class CaseSaveService {
         return savedCase;
     }
 
+    public boolean titleExists(String title) {
+        return caseRepository.existsByTitle(title);
+    }
+
     /**
      * Finds a suspect ID by name using case-insensitive, trimmed matching.
      * Falls back to partial first-word match to handle minor AI name variations.

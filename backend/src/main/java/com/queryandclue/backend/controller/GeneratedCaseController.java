@@ -78,17 +78,32 @@ public class GeneratedCaseController {
             ));
         }
 
-        GeneratedCase generatedCase = aiCaseGeneratorService.generateCase();
+        // Try up to 2 times in case AI generates a duplicate title
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            GeneratedCase generatedCase = aiCaseGeneratorService.generateCase();
 
-        boolean valid = caseValidator.validate(generatedCase);
-        if (!valid) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "AI generated case was invalid and was not saved."));
+            boolean valid = caseValidator.validate(generatedCase);
+            if (!valid) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "AI generated case was invalid and was not saved."));
+            }
+
+            String title = generatedCase.getCaseData().getTitle();
+            if (caseSaveService.titleExists(title)) {
+                if (attempt == 2) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                        "error", "DUPLICATE_CASE",
+                        "message", "A case with this title already exists. Please try again."
+                    ));
+                }
+                continue; // retry
+            }
+
+            Case savedCase = caseSaveService.saveGeneratedCase(generatedCase);
+            counter.incrementAndGet();
+            return ResponseEntity.ok(savedCase);
         }
 
-        Case savedCase = caseSaveService.saveGeneratedCase(generatedCase);
-        counter.incrementAndGet();
-
-        return ResponseEntity.ok(savedCase);
+        return ResponseEntity.internalServerError().body(Map.of("error", "Failed to generate a unique case."));
     }
 }

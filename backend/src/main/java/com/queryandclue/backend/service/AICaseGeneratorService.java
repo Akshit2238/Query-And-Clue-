@@ -5,6 +5,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
+import java.util.Random;
 
 import org.springframework.stereotype.Service;
 
@@ -16,8 +18,32 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class AICaseGeneratorService {
 
+    private static final List<String> THEMES = List.of(
+        "a murder at a Victorian-era mansion during a dinner party",
+        "a poisoning inside a luxury cruise ship",
+        "a theft and blackmail scheme at a prestigious art auction house",
+        "a disappearance in a small mountain village with a dark secret",
+        "a sabotage at a prestigious horse racing event",
+        "a heist gone wrong at an underground casino",
+        "a murder backstage at a famous theatre on opening night",
+        "a kidnapping linked to an old family inheritance dispute",
+        "a poisoning at a high-stakes cooking competition",
+        "a murder inside a university library during exam season",
+        "a conspiracy at a remote research station in the mountains",
+        "a blackmail ring exposed at an exclusive private members club",
+        "a murder during a masquerade ball at a haunted estate",
+        "a smuggling operation uncovered at a coastal fishing village",
+        "a corporate espionage case at a pharmaceutical company",
+        "a murder at a championship chess tournament",
+        "a suspicious death at an ancient monastery",
+        "a fraud scheme at an antique shop with forged historical items",
+        "a murder at a wine vineyard during harvest festival",
+        "a missing persons case tied to an underground fight club"
+    );
+
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
+    private final Random random = new Random();
 
     public AICaseGeneratorService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -37,12 +63,18 @@ public class AICaseGeneratorService {
             );
         }
 
+        String theme = THEMES.get(random.nextInt(THEMES.size()));
+
         String prompt = """
                 Generate exactly ONE original fictional detective case for an SQL investigation game.
 
+                THEME: The case is set around %s.
+                You MUST use this exact setting and scenario. Do NOT default to tech companies or data breaches.
+                Invent completely new fictional character names, locations, and a unique storyline.
+
                 The case must be logically consistent, solvable, and fictional.
 
-                EXACT DATA COUNTS:
+                EXACT DATA COUNTS:""".formatted(theme) + """
                 - 1 victim
                 - exactly 4 suspects
                 - exactly 1 crime scene
@@ -184,7 +216,7 @@ public class AICaseGeneratorService {
                       "content": %s
                     }
                   ],
-                  "temperature": 0.2,
+                  "temperature": 1.0,
                   "max_completion_tokens": 8192,
                   "reasoning_effort": "low",
                   "include_reasoning": false,

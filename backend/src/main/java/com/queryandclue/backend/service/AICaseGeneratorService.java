@@ -216,7 +216,7 @@ public class AICaseGeneratorService {
                       "content": %s
                     }
                   ],
-                  "temperature": 1.0,
+                  "temperature": 0.7,
                   "max_completion_tokens": 8192,
                   "reasoning_effort": "low",
                   "include_reasoning": false,

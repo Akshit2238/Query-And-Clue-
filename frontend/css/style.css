@@ -790,3 +790,520 @@ textarea.sunken-panel, input.sunken-panel, select.sunken-panel {
     pointer-events: none;
     filter: drop-shadow(0px -2px 4px rgba(0,0,0,0.4));
 }
+
+/* =========================================
+   PHASE 1: CASE INTRO BRIEFING MODAL
+   ========================================= */
+
+.briefing-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 16, 26, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 16px;
+    animation: fadeIn 0.25s ease-out;
+}
+
+.briefing-folder {
+    background: #f4edd4;
+    color: #1a1a1a;
+    width: 100%;
+    max-width: 680px;
+    border: 3px solid #33261a;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.7), inset 0 0 20px rgba(180,150,110,0.3);
+    font-family: var(--font-ui);
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.briefing-folder-tab {
+    background: #d4c29a;
+    border-bottom: 2px solid #33261a;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: #4a3828;
+}
+
+.classified-stamp {
+    display: inline-block;
+    padding: 2px 8px;
+    border: 2px dashed #b91c1c;
+    color: #b91c1c;
+    font-weight: 900;
+    font-size: 11px;
+    transform: rotate(-3deg);
+    text-transform: uppercase;
+}
+
+.briefing-body {
+    padding: 20px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+.briefing-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+    font-family: 'Times New Roman', serif;
+}
+
+.briefing-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #a89878;
+    font-size: 12px;
+}
+
+.meta-pill {
+    background: #e5d8b8;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-weight: 600;
+    border: 1px solid #c2b18c;
+}
+
+.briefing-narrative {
+    font-size: 13.5px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    color: #2b241c;
+    background: rgba(255,255,255,0.4);
+    padding: 12px;
+    border-left: 3px solid #854d0e;
+}
+
+.briefing-tasks {
+    background: #ebe0c0;
+    border: 1px solid #c9bca0;
+    padding: 12px;
+    border-radius: 3px;
+    margin-bottom: 20px;
+    font-size: 12px;
+}
+
+.briefing-tasks h4 {
+    margin: 0 0 6px 0;
+    color: #451a03;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.briefing-tasks ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.briefing-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #d4c29a;
+    padding-top: 14px;
+}
+
+.btn-briefing-start {
+    background: #1e3a8a;
+    color: #ffffff;
+    font-weight: bold;
+    padding: 8px 22px;
+    font-size: 13px;
+    border: 2px outset #3b82f6;
+    cursor: pointer;
+}
+.btn-briefing-start:hover {
+    background: #1d4ed8;
+}
+
+.btn-briefing-skip {
+    background: #e2e8f0;
+    color: #334155;
+    font-weight: 600;
+    padding: 8px 16px;
+    font-size: 12px;
+    border: 2px outset #cbd5e1;
+    cursor: pointer;
+}
+.btn-briefing-skip:hover {
+    background: #cbd5e1;
+}
+
+/* =========================================
+   PHASE 2: FOCUS MODE & KEYBOARD CONTROLS
+   ========================================= */
+
+.focus-mode #desktop {
+    background: #050a12 !important;
+}
+
+.focus-mode .desktop-icons {
+    opacity: 0.15;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.focus-mode .retro-window:not(.focused) {
+    opacity: 0.25;
+    filter: blur(1px);
+    transition: opacity 0.2s, filter 0.2s;
+}
+
+.focus-mode .retro-window.focused {
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
+}
+
+/* Shortcuts Helper Badge */
+.shortcut-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    background: #334155;
+    color: #f8fafc;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    margin-left: 4px;
+    border: 1px solid #475569;
+}
+
+/* =========================================
+   PHASE 3: UPGRADED ARREST SCENE
+   ========================================= */
+
+.arrest-steps-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.suspect-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.suspect-card-selectable {
+    background: #fff;
+    border: 2px solid #94a3b8;
+    padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: border-color 0.15s, background-color 0.15s, transform 0.1s;
+}
+
+.suspect-card-selectable:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.suspect-card-selectable.selected {
+    border-color: #dc2626;
+    background: #fef2f2;
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+    transform: scale(1.02);
+}
+
+.suspect-card-selectable .suspect-avatar {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.suspect-card-selectable .suspect-name {
+    font-size: 11px;
+    font-weight: bold;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.suspect-card-selectable .suspect-role {
+    font-size: 10px;
+    color: #64748b;
+}
+
+/* Interrogation Box */
+.interrogation-box {
+    background: #1e293b;
+    color: #f8fafc;
+    padding: 12px;
+    border-radius: 4px;
+    border-left: 4px solid #f59e0b;
+    margin: 8px 0;
+}
+
+.interrogation-dialogue {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.5;
+    min-height: 48px;
+    white-space: pre-wrap;
+}
+
+.interrogation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.btn-interrogate {
+    background: #334155;
+    color: #f1f5f9;
+    border: 1px solid #475569;
+    padding: 4px 10px;
+    font-size: 10.5px;
+    cursor: pointer;
+    border-radius: 3px;
+}
+.btn-interrogate:hover {
+    background: #475569;
+    border-color: #94a3b8;
+}
+
+/* Evidence Selection Chips */
+.evidence-chips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0;
+}
+
+.evidence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    font-size: 11px;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.evidence-chip.selected {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+    font-weight: bold;
+}
+
+/* Confession Reveal */
+.confession-modal {
+    background: #090d16;
+    color: #38bdf8;
+    border: 2px solid #ef4444;
+    padding: 16px;
+    font-family: var(--font-mono);
+    margin-top: 12px;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    animation: fadeIn 0.3s ease;
+}
+
+.confession-title {
+    color: #ef4444;
+    font-size: 14px;
+    font-weight: bold;
+    border-bottom: 1px solid #ef444455;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+}
+
+/* =========================================
+   PHASE 4: DEBRIEF & DETECTIVE'S DESK
+   ========================================= */
+
+.debrief-timeline {
+    border-left: 2px solid #3b82f6;
+    padding-left: 14px;
+    margin: 12px 0 16px 10px;
+}
+
+.timeline-step {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.timeline-step::before {
+    content: '';
+    position: absolute;
+    left: -19px;
+    top: 3px;
+    width: 8px;
+    height: 8px;
+    background: #3b82f6;
+    border-radius: 50%;
+}
+
+.timeline-step.critical::before {
+    background: #ef4444;
+    box-shadow: 0 0 6px #ef4444;
+}
+
+.timeline-time {
+    font-size: 10.5px;
+    font-weight: bold;
+    color: #2563eb;
+    font-family: var(--font-mono);
+}
+
+.timeline-desc {
+    font-size: 12px;
+    color: #1e293b;
+}
+
+.stats-card-row {
+    display: flex;
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.stat-box {
+    flex: 1;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    padding: 10px;
+    text-align: center;
+    border-radius: 4px;
+}
+
+.stat-box-num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #1e3a8a;
+}
+
+.stat-box-label {
+    font-size: 10px;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+/* =========================================
+   PHASE 5: TOOL GATING & INVESTIGATION STAGES
+   ========================================= */
+
+.stage-tracker-bar {
+    display: flex;
+    background: #e2e8f0;
+    border-bottom: 1px solid #cbd5e1;
+    padding: 4px 8px;
+    gap: 6px;
+    align-items: center;
+    font-size: 11px;
+}
+
+.stage-indicator {
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: #cbd5e1;
+    color: #475569;
+    font-weight: 600;
+}
+
+.stage-indicator.active {
+    background: #1e3a8a;
+    color: #ffffff;
+}
+
+.stage-indicator.done {
+    background: #10b981;
+    color: #ffffff;
+}
+
+.experienced-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10.5px;
+    color: #475569;
+}
+
+/* =========================================
+   MOBILE RESPONSIVE STACKED LAYOUT (<768px)
+   ========================================= */
+
+@media (max-width: 768px) {
+    #desktop {
+        height: calc(100vh - 44px);
+        overflow-y: auto;
+    }
+
+    .desktop-icons {
+        position: static;
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        max-height: none;
+        background: rgba(0,0,0,0.5);
+        padding: 6px;
+        gap: 6px;
+        justify-content: center;
+    }
+
+    .icon-btn {
+        width: 58px;
+        height: 50px;
+        font-size: 9.5px;
+    }
+
+    .icon-svg {
+        width: 26px;
+        height: 26px;
+    }
+
+    .retro-window {
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 380px;
+        margin-bottom: 12px;
+        transform: none !important;
+    }
+
+    .retro-window.hidden {
+        display: none !important;
+    }
+
+    #taskbar {
+        height: 44px;
+        padding: 4px;
+    }
+
+    .task-item {
+        min-width: 80px;
+        font-size: 10px;
+        padding: 2px 4px;
+    }
+
+    #activeCaseLabel, #detectiveBadgeTray {
+        display: none !important;
+    }
+
+    .cop-mascot {
+        display: none !important;
+    }
+
+    .briefing-folder {
+        max-height: 90vh;
+    }
+}

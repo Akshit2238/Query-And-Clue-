@@ -214,7 +214,8 @@
 </div>
 
 <script>
-  const API = 'https://query-and-clue.onrender.com';
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+  const API = isLocal ? 'http://localhost:8081' : 'https://query-and-clue.onrender.com';
   let ADMIN_KEY = '';
   let cases = [];
   let activeCaseId = null;

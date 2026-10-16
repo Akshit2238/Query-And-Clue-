@@ -4,14 +4,28 @@
 
 const getApiBase = () => window.API_BASE_URL || 'http://localhost:8081/api';
 
-async function apiFetch(endpoint, options) {
+async function apiFetch(endpoint, options = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const fetchOptions = { ...options, signal: controller.signal };
+
     try {
-        const res = await fetch(`${getApiBase()}${endpoint}`, options);
+        const res = await fetch(`${getApiBase()}${endpoint}`, fetchOptions);
+        clearTimeout(timeoutId);
         return res;
     } catch (e) {
+        clearTimeout(timeoutId);
         const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
         if (isLocal && !getApiBase().includes('127.0.0.1')) {
-            return await fetch(`http://127.0.0.1:8081/api${endpoint}`, options);
+            try {
+                const fbCtrl = new AbortController();
+                const fbTimeout = setTimeout(() => fbCtrl.abort(), 6000);
+                const res = await fetch(`http://127.0.0.1:8081/api${endpoint}`, { ...options, signal: fbCtrl.signal });
+                clearTimeout(fbTimeout);
+                return res;
+            } catch (err2) {
+                // fall through
+            }
         }
         throw e;
     }
@@ -20,6 +34,8 @@ async function apiFetch(endpoint, options) {
 
 let caseId = parseInt(localStorage.getItem('qc_active_case') || '1', 10);
 let cachedCasesList = [];
+let sessionQueriesCount = 0;
+let currentInvestigationStage = 1;
 if (!window.highestZ) window.highestZ = 100;
 
 // =========================================
@@ -31,6 +47,8 @@ function init() {
     initResizableWindows();
     initDraggableWindows();
     initWindowFocus();
+    initKeyboardShortcuts();
+    initFocusMode();
     initIconTriggers();
     initNotepad();
     initTabs();
@@ -40,6 +58,9 @@ function init() {
     initBrowser();
     initDetectiveBadge();
     initGuide();
+    initBriefingControls();
+    initStageTracker();
+    initArrestInterrogation();
 
     loadCaseContext(caseId);
 }
@@ -294,8 +315,20 @@ function initDraggableWindows() {
             const initialTop = rect.top - desktopRect.top;
 
             const onMove = (mv) => {
-                win.style.left = `${initialLeft + mv.clientX - startX}px`;
-                win.style.top = `${initialTop + mv.clientY - startY}px`;
+                const deskW = desktop ? desktop.clientWidth : window.innerWidth;
+                const deskH = desktop ? desktop.clientHeight : (window.innerHeight - 36);
+                const winW = win.offsetWidth || 320;
+                const winH = win.offsetHeight || 200;
+
+                let nextLeft = initialLeft + mv.clientX - startX;
+                let nextTop = initialTop + mv.clientY - startY;
+
+                // Ensure window stays within viewable boundaries
+                nextLeft = Math.max(0, Math.min(nextLeft, Math.max(0, deskW - 60)));
+                nextTop = Math.max(0, Math.min(nextTop, Math.max(0, deskH - 30)));
+
+                win.style.left = `${nextLeft}px`;
+                win.style.top = `${nextTop}px`;
             };
             const onUp = () => {
                 document.removeEventListener('mousemove', onMove);
@@ -710,6 +743,39 @@ async function loadCaseContext(id) {
         console.warn('Could not load case metadata:', e.message);
     }
 
+    sessionQueriesCount = 0;
+    updateInvestigationStage(1);
+
+    if (caseData) {
+        window.currentCaseData = caseData;
+        const bTitle = document.getElementById('briefingTitle');
+        const bDiff = document.getElementById('briefingDifficulty');
+        const bType = document.getElementById('briefingType');
+        const bDate = document.getElementById('briefingDate');
+        const bNarrative = document.getElementById('briefingNarrative');
+        const wCaseNo = document.getElementById('warrantCaseNo');
+        const dTitle = document.getElementById('debriefCaseTitle');
+
+        if (bTitle) bTitle.textContent = `Case #${displayNum}: ${caseData.title}`;
+        if (bDiff) bDiff.textContent = `DIFFICULTY: ${caseData.difficulty || 'NORMAL'}`.toUpperCase();
+        if (bType) bType.textContent = `TYPE: ${caseData.crimeType || 'FELONY'}`.toUpperCase();
+        if (bDate) bDate.textContent = `DATE: ${caseData.crimeDate || '2026-09-10'}`;
+        if (bNarrative && caseData.description) bNarrative.textContent = caseData.description;
+        if (wCaseNo) wCaseNo.textContent = `Case No. #${displayNum} (DB ID: ${caseId})`;
+        if (dTitle) dTitle.textContent = `Case #${displayNum}: ${caseData.title}`;
+
+        // Check if intro has been seen
+        const seen = localStorage.getItem('qc_intro_seen_' + caseId);
+        const skipBtn = document.getElementById('btnBriefingSkip');
+        const overlay = document.getElementById('briefingOverlay');
+        if (skipBtn) {
+            skipBtn.style.display = seen ? 'inline-block' : 'none';
+        }
+        if (overlay) {
+            overlay.style.display = 'flex';
+        }
+    }
+
     await Promise.all([
         loadSuspects(caseId),
         loadEvidence(caseId),
@@ -809,6 +875,9 @@ async function loadEvidence(id) {
             card.addEventListener('click', () => openEvidenceViewer(e, false));
             grid.appendChild(card);
         });
+
+        window.currentCaseEvidence = evidence;
+        renderArrestEvidenceChips(evidence);
     } catch (e) {
         grid.innerHTML = `<div style="padding:12px;font-size:11px;color:#c00;">Error loading clues: ${esc(e.message)}</div>`;
     }
@@ -994,6 +1063,8 @@ async function loadAccusationSuspects(id) {
             select.appendChild(opt);
         });
         select.disabled = false;
+        window.currentCaseSuspects = suspects;
+        renderArrestSuspectPicker(suspects);
     } catch (e) {
         select.innerHTML = '<option value="">Error loading suspects</option>';
     }
@@ -1218,6 +1289,11 @@ if (btnExecute) {
                 return;
             }
 
+            sessionQueriesCount++;
+            if (currentInvestigationStage < 2) {
+                updateInvestigationStage(2);
+            }
+
             // Save to query history
             try {
                 let hist = JSON.parse(localStorage.getItem('qc_query_history') || '[]');
@@ -1342,6 +1418,26 @@ if (btnSubmitAccusation) {
                     ` : ''}
                 </div>
             `;
+
+            if (data.correct) {
+                // Confession typewriter reveal
+                const confessionBox = document.getElementById('confessionRevealModal');
+                const confessionText = document.getElementById('confessionText');
+                if (confessionBox && confessionText) {
+                    confessionBox.style.display = 'block';
+                    const confessionSpeech = `"Alright... alright! Put the cuffs on! I never meant for Sarah to get hurt. She discovered the altered ledger balances and was preparing to report me to the oversight committee on Monday. When I unlocked the office at 21:20 to retrieve the physical ledger, she was still at her desk. She confronted me... a struggle ensued... I struck her, grabbed the ledger, and fled through the stairwell. I'm sorry..."`;
+                    typewriterText(confessionText, confessionSpeech);
+                }
+
+                // Advance to Stage 3 Apprehended
+                updateInvestigationStage(3);
+
+                // Save persistent progress and show debrief
+                saveCaseCompleted(caseId, data, sessionQueriesCount);
+
+                const taskDebrief = document.getElementById('taskItemDebrief');
+                if (taskDebrief) taskDebrief.style.display = 'flex';
+            }
         } catch (e) {
             statusEl.textContent = `Network Error: ${e.message}`;
             statusEl.style.color = '#c00';
@@ -1349,6 +1445,401 @@ if (btnSubmitAccusation) {
             btnSubmitAccusation.disabled = false;
         }
     });
+}
+
+// Typewriter effect for confession speech
+function typewriterText(el, text, speed = 18) {
+    el.textContent = '';
+    let i = 0;
+    const timer = setInterval(() => {
+        el.textContent += text.charAt(i);
+        i++;
+        if (i >= text.length) clearInterval(timer);
+    }, speed);
+}
+
+// =========================================
+// PHASE 1: CASE BRIEFING CONTROLS
+// =========================================
+
+function initBriefingControls() {
+    const btnStart = document.getElementById('btnBriefingStart');
+    const btnSkip = document.getElementById('btnBriefingSkip');
+    const btnReplay = document.getElementById('btnReplayBriefing');
+    const overlay = document.getElementById('briefingOverlay');
+
+    if (btnStart) {
+        btnStart.addEventListener('click', () => {
+            localStorage.setItem('qc_intro_seen_' + caseId, 'true');
+            if (overlay) overlay.style.display = 'none';
+            // Open clues locker if no window is active
+            const anyOpen = Array.from(document.querySelectorAll('.retro-window')).some(w => !w.classList.contains('hidden'));
+            if (!anyOpen) bringToFront('win-clues');
+        });
+    }
+
+    if (btnSkip) {
+        btnSkip.addEventListener('click', () => {
+            localStorage.setItem('qc_intro_seen_' + caseId, 'true');
+            if (overlay) overlay.style.display = 'none';
+        });
+    }
+
+    if (btnReplay) {
+        btnReplay.addEventListener('click', () => {
+            if (overlay) {
+                const skipBtn = document.getElementById('btnBriefingSkip');
+                if (skipBtn) skipBtn.style.display = 'inline-block';
+                overlay.style.display = 'flex';
+            }
+        });
+    }
+}
+
+// =========================================
+// PHASE 2: KEYBOARD SHORTCUTS & FOCUS MODE
+// =========================================
+
+function initFocusMode() {
+    const btnFocus = document.getElementById('btnFocusMode');
+    if (btnFocus) {
+        btnFocus.addEventListener('click', () => {
+            const isFocus = document.body.classList.toggle('focus-mode');
+            btnFocus.textContent = isFocus ? '🎯 Focus [ON]' : '🎯 Focus';
+            btnFocus.style.background = isFocus ? '#1e3a8a' : '';
+            btnFocus.style.color = isFocus ? '#ffffff' : '';
+        });
+    }
+}
+
+function initKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        const tag = (e.target.tagName || '').toLowerCase();
+        const isEditing = (tag === 'input' && e.target.type !== 'checkbox') || tag === 'textarea';
+
+        if (e.key === 'Escape') {
+            const overlay = document.getElementById('briefingOverlay');
+            if (overlay && overlay.style.display === 'flex' && localStorage.getItem('qc_intro_seen_' + caseId)) {
+                overlay.style.display = 'none';
+                return;
+            }
+            const debrief = document.getElementById('win-debrief');
+            if (debrief && !debrief.classList.contains('hidden')) {
+                debrief.classList.add('hidden');
+                updateTaskbar();
+                return;
+            }
+            let topWin = null;
+            let maxZ = -1;
+            document.querySelectorAll('.retro-window:not(.hidden)').forEach(w => {
+                const z = parseInt(w.style.zIndex || '0', 10);
+                if (z > maxZ) { maxZ = z; topWin = w; }
+            });
+            if (topWin) {
+                topWin.classList.add('hidden');
+                updateTaskbar();
+            }
+            return;
+        }
+
+        if (isEditing) return;
+
+        if ((e.altKey && (e.key === 'f' || e.key === 'F')) || (e.key === 'f' && !e.ctrlKey && !e.metaKey)) {
+            e.preventDefault();
+            const btnFocus = document.getElementById('btnFocusMode');
+            if (btnFocus) btnFocus.click();
+            return;
+        }
+
+        if (e.key === 'Tab' && !e.shiftKey) {
+            const openWindows = Array.from(document.querySelectorAll('.retro-window:not(.hidden)'));
+            if (openWindows.length > 1) {
+                e.preventDefault();
+                openWindows.sort((a, b) => parseInt(a.style.zIndex || '0', 10) - parseInt(b.style.zIndex || '0', 10));
+                bringToFront(openWindows[0]);
+            }
+            return;
+        }
+
+        if (e.altKey) {
+            const num = parseInt(e.key, 10);
+            const mapping = {
+                1: 'win-guide',
+                2: 'win-manual',
+                3: 'win-search',
+                4: 'win-clues',
+                5: 'win-suspects',
+                6: 'win-arrest'
+            };
+            if (mapping[num]) {
+                e.preventDefault();
+                bringToFront(mapping[num]);
+            }
+        }
+    });
+}
+
+// =========================================
+// PHASE 3: INTERROGATION & EVIDENCE CHIPS
+// =========================================
+
+function initArrestInterrogation() {
+    const btnDebrief = document.getElementById('btnOpenDebrief');
+    if (btnDebrief) {
+        btnDebrief.addEventListener('click', () => {
+            showCaseDebrief(window.lastSolvedData || {}, sessionQueriesCount);
+        });
+    }
+
+    document.querySelectorAll('.btn-interrogate').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const topic = btn.getAttribute('data-topic');
+            const select = document.getElementById('accusedSuspect');
+            const suspectId = select ? parseInt(select.value, 10) : 0;
+            const dialogueEl = document.getElementById('interrogationDialogue');
+            if (!dialogueEl) return;
+
+            const suspect = (window.currentCaseSuspects || []).find(s => Number(s.suspectId) === Number(suspectId));
+            const sName = suspect ? suspect.name : 'Suspect';
+
+            if (!suspectId) {
+                dialogueEl.textContent = 'Please select a suspect above to begin questioning.';
+                return;
+            }
+
+            let response = '';
+            if (sName.includes('Daniel')) {
+                if (topic === 'alibi') response = `"${sName}: I was working late on the quarterly audit on the 7th floor. Anyone who stole the ledger could have grabbed my badge off my desk!"`;
+                else if (topic === 'motive') response = `"${sName}: Look, Sarah and I clashed over ledger accounting discrepancies, but I would never harm her! She was going to file a complaint on Monday..."`;
+                else response = `"${sName}: That $15,000 transaction into my account was an independent advisory consulting fee! It has nothing to do with the stolen ledger!"`;
+            } else if (sName.includes('Rebecca')) {
+                if (topic === 'alibi') response = `"${sName}: I left the building at 8:30 PM sharp. The door logs and parking ticket will verify that."`;
+                else if (topic === 'motive') response = `"${sName}: Sarah and I had contract disputes, but they were in legal mediation. Resorting to physical violence makes zero sense for a lawyer."`;
+                else response = `"${sName}: All payments to my firm are fully invoiced and audited."`;
+            } else if (sName.includes('Michael')) {
+                if (topic === 'alibi') response = `"${sName}: I was in the security surveillance room from 20:45 until the night sweep at 22:00. The camera feeds were my responsibility."`;
+                else if (topic === 'motive') response = `"${sName}: Sarah blamed me for past security lapses, but I wouldn't jeopardize my career over a disagreement."`;
+                else response = `"${sName}: I have no unlogged income or suspicious transfers. My record is spotless."`;
+            } else {
+                if (topic === 'alibi') response = `"${sName}: I was dining at the bistro down the street until well after 9:30 PM. The waitstaff saw me."`;
+                else if (topic === 'motive') response = `"${sName}: Sarah and I had business friction, but killing the partnership ruins my investment."`;
+                else response = `"${sName}: The funds I received were regular business expense reimbursements."`;
+            }
+
+            typewriterText(dialogueEl, response, 12);
+        });
+    });
+}
+
+function renderArrestSuspectPicker(suspects) {
+    const grid = document.getElementById('arrestSuspectPickerGrid');
+    const select = document.getElementById('accusedSuspect');
+    if (!grid) return;
+
+    if (!suspects || !suspects.length) {
+        grid.innerHTML = '<div style="font-size:11px;color:#666;">No suspects found.</div>';
+        return;
+    }
+
+    grid.innerHTML = '';
+    const avatars = ['🧑‍💼', '👩‍⚖️', '👮‍♂️', '👩‍💼', '🕵️‍♂️'];
+
+    suspects.forEach((s, idx) => {
+        const card = document.createElement('div');
+        card.className = 'suspect-card-selectable';
+        card.setAttribute('data-suspect-id', s.suspectId);
+        card.innerHTML = `
+            <div class="suspect-avatar">${avatars[idx % avatars.length]}</div>
+            <div class="suspect-name">${esc(s.name)}</div>
+            <div class="suspect-role">${esc(s.occupation || 'Suspect')}</div>
+        `;
+
+        card.addEventListener('click', () => {
+            grid.querySelectorAll('.suspect-card-selectable').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+
+            if (select) {
+                select.value = s.suspectId;
+            }
+
+            const sec = document.getElementById('interrogationSection');
+            const targetLabel = document.getElementById('interrogateTargetLabel');
+            const dialogue = document.getElementById('interrogationDialogue');
+            if (sec) sec.style.display = 'block';
+            if (targetLabel) targetLabel.textContent = `INTERROGATING: ${s.name.toUpperCase()} (${s.occupation || 'SUSPECT'})`;
+            if (dialogue) dialogue.textContent = `"You have no right holding me here, Detective. Ask your questions so I can leave."`;
+
+            if (currentInvestigationStage < 3) {
+                updateInvestigationStage(3);
+            }
+        });
+
+        grid.appendChild(card);
+    });
+}
+
+function renderArrestEvidenceChips(evidence) {
+    const container = document.getElementById('arrestEvidenceChips');
+    const expText = document.getElementById('explanation');
+    if (!container) return;
+
+    if (!evidence || !evidence.length) {
+        container.innerHTML = '<span style="font-size:11px;color:#666;">No evidence discovered yet.</span>';
+        return;
+    }
+
+    container.innerHTML = '';
+    evidence.forEach(e => {
+        const chip = document.createElement('div');
+        chip.className = 'evidence-chip';
+        chip.innerHTML = `<span>📎</span><span>${esc(e.evidenceType || 'Exhibit')}: ${esc(e.description || '').substring(0, 32)}...</span>`;
+
+        chip.addEventListener('click', () => {
+            chip.classList.toggle('selected');
+            if (expText) {
+                const label = `[Evidence: ${e.evidenceType} - ${e.description}]`;
+                if (chip.classList.contains('selected')) {
+                    if (!expText.value.includes(label)) {
+                        expText.value = (expText.value ? expText.value + '\n' : '') + label;
+                    }
+                } else {
+                    expText.value = expText.value.replace(label, '').trim();
+                }
+            }
+        });
+
+        container.appendChild(chip);
+    });
+}
+
+// =========================================
+// PHASE 4: POST-CASE DEBRIEF & PERSISTENCE
+// =========================================
+
+function saveCaseCompleted(cId, data, queryCount) {
+    window.lastSolvedData = data;
+    try {
+        let rank = 'Master Detective (S)';
+        if (queryCount > 8) rank = 'Senior Detective (A)';
+        if (queryCount > 14) rank = 'Field Investigator (B)';
+
+        const record = {
+            caseId: cId,
+            rank: rank,
+            queriesCount: queryCount,
+            completedAt: new Date().toISOString()
+        };
+        localStorage.setItem('qc_case_completed_' + cId, JSON.stringify(record));
+
+        const curXp = parseInt(localStorage.getItem('qc_player_xp') || '0', 10);
+        localStorage.setItem('qc_player_xp', String(curXp + 250));
+
+        loadCaseList();
+    } catch(e) {}
+}
+
+function showCaseDebrief(data, queryCount) {
+    const win = document.getElementById('win-debrief');
+    if (!win) return;
+
+    const queriesEl = document.getElementById('statQueriesCount');
+    const rankEl = document.getElementById('statEfficiencyRank');
+    const badgeStamp = document.getElementById('debriefBadgeStamp');
+    const timelineList = document.getElementById('debriefTimelineList');
+    const chainEl = document.getElementById('debriefEvidenceChain');
+
+    if (queriesEl) queriesEl.textContent = String(queryCount || 1);
+
+    let rank = 'S';
+    let title = '⭐ MASTER DETECTIVE';
+    if (queryCount > 4) { rank = 'A'; title = '🎖️ SENIOR DETECTIVE'; }
+    if (queryCount > 8) { rank = 'B'; title = '🔍 INVESTIGATOR'; }
+    if (queryCount > 14) { rank = 'C'; title = '📋 ROOKIE OFFICER'; }
+
+    if (rankEl) rankEl.textContent = rank;
+    if (badgeStamp) badgeStamp.textContent = title;
+
+    if (timelineList) {
+        timelineList.innerHTML = `
+            <div class="timeline-step">
+                <div class="timeline-time">20:00</div>
+                <div class="timeline-desc">Sarah Morgan enters the Executive Office to reconcile the ledger.</div>
+            </div>
+            <div class="timeline-step">
+                <div class="timeline-time">20:30</div>
+                <div class="timeline-desc">Rebecca Moore departs the main building (verified by lobby logs).</div>
+            </div>
+            <div class="timeline-step">
+                <div class="timeline-time">20:45</div>
+                <div class="timeline-desc">Michael Bennett begins camera monitoring in security suite.</div>
+            </div>
+            <div class="timeline-step critical">
+                <div class="timeline-time">21:20</div>
+                <div class="timeline-desc"><strong>Daniel Carter uses his security access card</strong> to enter the executive office floor.</div>
+            </div>
+            <div class="timeline-step critical">
+                <div class="timeline-time">21:30</div>
+                <div class="timeline-desc"><strong>Attack on Sarah Morgan &amp; Theft of Ledger:</strong> Physical struggle occurs; drawer is broken open.</div>
+            </div>
+            <div class="timeline-step">
+                <div class="timeline-time">21:40</div>
+                <div class="timeline-desc">Daniel Carter exits floor 7 with the ledger.</div>
+            </div>
+            <div class="timeline-step">
+                <div class="timeline-time">22:00</div>
+                <div class="timeline-desc">Security staff discovers the victim and sounds alarm.</div>
+            </div>
+        `;
+    }
+
+    if (chainEl) {
+        chainEl.innerHTML = `
+            <strong>Culprit:</strong> Daniel Carter (Accountant)<br>
+            <strong>Motive Established:</strong> Wanted to hide financial fraud ($15,000 unrecorded wire transfer).<br>
+            <strong>Forensic Corroboration:</strong> Security card found at crime scene matched Daniel Carter's credentials. Fingerprints on broken desk drawer matched suspect. Access logs place suspect inside the office from 21:20 to 21:40 during the precise time of the attack.<br>
+            <strong>Result:</strong> Suspect confessed in full; arrest warrant executed with distinction.
+        `;
+    }
+
+    bringToFront(win);
+}
+
+// =========================================
+// PHASE 5: TOOL GATING & INVESTIGATION STAGES
+// =========================================
+
+function initStageTracker() {
+    const chk = document.getElementById('chkExperiencedMode');
+    if (chk) {
+        const saved = localStorage.getItem('qc_experienced_mode') === 'true';
+        chk.checked = saved;
+        chk.addEventListener('change', () => {
+            localStorage.setItem('qc_experienced_mode', chk.checked ? 'true' : 'false');
+            updateInvestigationStage(currentInvestigationStage);
+        });
+    }
+}
+
+function updateInvestigationStage(stage) {
+    currentInvestigationStage = stage;
+    const isExp = localStorage.getItem('qc_experienced_mode') === 'true';
+
+    const s1 = document.getElementById('stage1Ind');
+    const s2 = document.getElementById('stage2Ind');
+    const s3 = document.getElementById('stage3Ind');
+
+    if (s1 && s2 && s3) {
+        if (isExp) {
+            s1.className = 'stage-indicator done';
+            s2.className = 'stage-indicator done';
+            s3.className = 'stage-indicator done';
+            return;
+        }
+
+        s1.className = 'stage-indicator ' + (stage > 1 ? 'done' : (stage === 1 ? 'active' : ''));
+        s2.className = 'stage-indicator ' + (stage > 2 ? 'done' : (stage === 2 ? 'active' : ''));
+        s3.className = 'stage-indicator ' + (stage >= 3 ? 'active' : '');
+    }
 }
 
 // =========================================
@@ -1369,3 +1860,5 @@ window.loadAccusationSuspects = loadAccusationSuspects;
 window.loadCaseList = loadCaseList;
 window.loadCaseContext = loadCaseContext;
 window.initResizableWindows = initResizableWindows;
+window.showCaseDebrief = showCaseDebrief;
+window.updateInvestigationStage = updateInvestigationStage;

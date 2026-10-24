@@ -32,12 +32,22 @@ public class SqlPolicyValidator {
             return ValidationResult.invalid("Query exceeds maximum length of " + MAX_QUERY_LENGTH);
         }
 
-        Statement statement;
+        net.sf.jsqlparser.statement.Statements statements;
         try {
-            statement = CCJSqlParserUtil.parse(query);
+            statements = CCJSqlParserUtil.parseStatements(query);
         } catch (JSQLParserException e) {
             return ValidationResult.invalid("Invalid SQL syntax: " + e.getMessage());
         }
+
+        if (statements == null || statements.getStatements().isEmpty()) {
+            return ValidationResult.invalid("Query cannot be empty");
+        }
+
+        if (statements.getStatements().size() > 1) {
+            return ValidationResult.invalid("Multiple SQL statements are forbidden");
+        }
+
+        Statement statement = statements.getStatements().get(0);
 
         if (!(statement instanceof Select)) {
             return ValidationResult.invalid("Only SELECT statements are allowed");
@@ -75,9 +85,17 @@ public class SqlPolicyValidator {
     }
 
     private boolean hasCaseScopePredicate(Select select, int caseId) {
-        String caseIdStr = String.valueOf(caseId);
-        String sql = select.toString().toLowerCase();
-        return sql.contains("case_id") && (sql.contains("= " + caseIdStr) || sql.contains("=" + caseIdStr));
+        if (select == null) {
+            return false;
+        }
+
+        // Strip string literals to prevent injection bypasses like WHERE alibi = 'case_id = 1'
+        String sql = select.toString();
+        String sqlNoLiterals = sql.replaceAll("'(''|[^'])*'", "''").toLowerCase();
+
+        // Match case_id = <caseId> or <caseId> = case_id with optional table prefix and word boundaries
+        String regex = "(?:(?:\\b[a-z0-9_]+\\.)?\\bcase_id\\b\\s*=\\s*" + caseId + "\\b|\\b" + caseId + "\\s*=\\s*(?:\\b[a-z0-9_]+\\.)?\\bcase_id\\b)";
+        return java.util.regex.Pattern.compile(regex).matcher(sqlNoLiterals).find();
     }
 
     public static class ValidationResult {

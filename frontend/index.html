@@ -28,6 +28,12 @@
 
     <div id="desktop">
 
+        <!-- PRECINCT SERVER CONNECTING / WAKEUP BANNER -->
+        <div id="precinctConnectingBanner" class="precinct-wakeup-banner" style="display:none;">
+            <span>📡</span>
+            <span id="precinctConnectingText">Connecting to Police Records Mainframe (Waking up precinct server on Render...)...</span>
+        </div>
+
         <!-- INVESTIGATION STAGE TRACKER & EXPERIENCED TOGGLE -->
         <div class="stage-tracker-bar" id="stageTrackerBar">
             <span style="font-weight:bold;color:#1e3a8a;">MISSION STAGE:</span>
@@ -299,55 +305,74 @@
                         </div>
                     </div>
 
-                    <h3 style="color: #000080; margin: 12px 0 6px 0; font-size: 13px;">🔍 2. Database Tables You Can Query</h3>
-                    <p style="margin-bottom: 6px;">In <strong>Search Tables</strong>, write standard <code>SELECT</code> statements. Available tables:</p>
+                    <h3 style="color: #000080; margin: 12px 0 6px 0; font-size: 13px;">🔍 2. Database Schema Reference &amp; Table Relationships</h3>
+                    <p style="margin-bottom: 6px; font-size: 11px;">All queries are executed against the precinct MySQL database. <strong>Case Scope Rule:</strong> Every query must filter by <code>WHERE case_id = {CASE_ID}</code> to access records for the active case.</p>
                     
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 12px; font-family: monospace;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 10.5px; margin-bottom: 12px; font-family: monospace;">
                         <tr style="background: #e2e8f0; text-align: left;">
-                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">Table Name</th>
-                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">Columns</th>
-                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">What to Look For</th>
+                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">Table</th>
+                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">Real Columns</th>
+                            <th style="padding: 4px 6px; border: 1px solid #cbd5e1;">Keys &amp; Relationships</th>
                         </tr>
                         <tr>
                             <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">suspects</td>
-                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">name, occupation, motive, alibi</td>
-                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">What each person claims they were doing</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">suspect_id, name, age, occupation, relationship_to_victim, motive, alibi</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">PK: <code>suspect_id</code>. Primary entity for joins.</td>
                         </tr>
                         <tr style="background: #f8fafc;">
                             <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">access_logs</td>
-                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">location, access_time, person_id</td>
-                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Keycard swipe times (proves who was actually there)</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">log_id, suspect_id, location, access_time, exit_time</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">FK: <code>suspect_id &rarr; suspects.suspect_id</code>. Verifies presence.</td>
                         </tr>
                         <tr>
                             <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">phone_records</td>
-                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">caller, receiver, call_time</td>
-                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Call times that disprove dinner or alibi claims</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">record_id, caller_suspect_id, receiver_suspect_id, call_time, call_duration</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">FKs: <code>caller_suspect_id</code> &amp; <code>receiver_suspect_id</code>.</td>
                         </tr>
                         <tr style="background: #f8fafc;">
                             <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">evidence</td>
-                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">evidence_name, found_at, description</td>
-                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Fingerprints, weapons, and forensics</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">evidence_id, description, location, evidence_type, date_found</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Forensics, access cards, and physical artifacts.</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">transactions</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">transaction_id, suspect_id, amount, transaction_date, description</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">FK: <code>suspect_id &rarr; suspects.suspect_id</code>. Financial motives.</td>
+                        </tr>
+                        <tr style="background: #f8fafc;">
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">timeline_events</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">event_id, event_time, description</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Official chronology of movements on the incident date.</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">victims</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">victim_id, name, age, occupation, cause_of_crime</td>
+                            <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">Details regarding the victim and mechanism of harm.</td>
                         </tr>
                     </table>
 
-                    <h3 style="color: #000080; margin: 12px 0 6px 0; font-size: 13px;">⚡ 3. 1-Click Starter Queries</h3>
-                    <p style="margin-bottom: 6px; font-size: 11px;">Click any button below to immediately paste the query into your active Search tab:</p>
+                    <h3 style="color: #000080; margin: 12px 0 6px 0; font-size: 13px;">⚡ 3. 1-Click Starter Queries &amp; JOIN Examples</h3>
+                    <p style="margin-bottom: 6px; font-size: 11px;">Click any button to paste directly into your active SQL query workbench:</p>
                     <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
-                            <code style="font-size:11px;">SELECT * FROM suspects WHERE case_id = {CASE_ID};</code>
-                            <button class="retro-btn btn-paste-query" data-sql="SELECT * FROM suspects WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                            <code style="font-size:10.5px;">SELECT suspect_id, name, occupation, alibi FROM suspects WHERE case_id = {CASE_ID};</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT suspect_id, name, occupation, alibi FROM suspects WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
-                            <code style="font-size:11px;">SELECT * FROM access_logs WHERE case_id = {CASE_ID};</code>
-                            <button class="retro-btn btn-paste-query" data-sql="SELECT * FROM access_logs WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                            <code style="font-size:10.5px;">SELECT s.name, a.location, a.access_time FROM access_logs a JOIN suspects s ON a.suspect_id = s.suspect_id WHERE a.case_id = {CASE_ID} ORDER BY a.access_time;</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT s.name, a.location, a.access_time FROM access_logs a JOIN suspects s ON a.suspect_id = s.suspect_id WHERE a.case_id = {CASE_ID} ORDER BY a.access_time;" style="font-size:10px; padding:2px 8px;">Try in Search</button>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
-                            <code style="font-size:11px;">SELECT * FROM phone_records WHERE case_id = {CASE_ID};</code>
-                            <button class="retro-btn btn-paste-query" data-sql="SELECT * FROM phone_records WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                            <code style="font-size:10.5px;">SELECT c.name AS caller, r.name AS receiver, p.call_time FROM phone_records p JOIN suspects c ON p.caller_suspect_id = c.suspect_id JOIN suspects r ON p.receiver_suspect_id = r.suspect_id WHERE p.case_id = {CASE_ID};</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT c.name AS caller, r.name AS receiver, p.call_time FROM phone_records p JOIN suspects c ON p.caller_suspect_id = c.suspect_id JOIN suspects r ON p.receiver_suspect_id = r.suspect_id WHERE p.case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
-                            <code style="font-size:11px;">SELECT * FROM evidence WHERE case_id = {CASE_ID};</code>
-                            <button class="retro-btn btn-paste-query" data-sql="SELECT * FROM evidence WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                            <code style="font-size:10.5px;">SELECT s.name, t.amount, t.description FROM transactions t JOIN suspects s ON t.suspect_id = s.suspect_id WHERE t.case_id = {CASE_ID} ORDER BY t.amount DESC;</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT s.name, t.amount, t.description FROM transactions t JOIN suspects s ON t.suspect_id = s.suspect_id WHERE t.case_id = {CASE_ID} ORDER BY t.amount DESC;" style="font-size:10px; padding:2px 8px;">Try in Search</button>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #cbd5e1; padding:6px 10px;">
+                            <code style="font-size:10.5px;">SELECT evidence_type, description, location FROM evidence WHERE case_id = {CASE_ID};</code>
+                            <button class="retro-btn btn-paste-query" data-sql="SELECT evidence_type, description, location FROM evidence WHERE case_id = {CASE_ID};" style="font-size:10px; padding:2px 8px;">Try in Search</button>
                         </div>
                     </div>
 
@@ -527,11 +552,11 @@
             <div class="window-body" style="max-height: 80vh; overflow-y: auto;">
                 <div class="warrant-paper">
                     <div style="font-size: 10px; display: flex; justify-content: space-between;">
-                        <span>FORM MC 442 - Arrest Warrant &amp; Interrogation Log</span>
+                        <span id="warrantFormId">FORM MC-W841 - OFFICIAL APPREHENSION ORDER</span>
                         <span id="warrantCaseNo">Case No. #1</span>
                     </div>
 
-                    <div class="warrant-title">
+                    <div class="warrant-title" id="warrantHeaderTitle">
                         Los Zorangeles Police Department<br>
                         <span style="font-size: 13px; font-weight: normal;">Minor Crimes &amp; Financial Fraud Squad</span><br><br>
                         APPREHENSION &amp; ARREST DOSSIER
@@ -761,14 +786,16 @@
                     <table class="suspects-table">
                         <thead>
                             <tr>
-                                <th><u>suspect_number</u></th>
-                                <th><u>first_name</u></th>
-                                <th><u>last_name</u></th>
+                                <th style="width: 50px;"><u>suspect_id</u></th>
+                                <th><u>name</u></th>
+                                <th style="width: 45px;"><u>age</u></th>
                                 <th><u>occupation</u></th>
+                                <th><u>relationship</u></th>
+                                <th><u>alibi</u></th>
                             </tr>
                         </thead>
                         <tbody id="suspectsTableBody">
-                            <tr><td colspan="4" style="text-align:center;color:#555;padding:10px;">Loading suspects...</td></tr>
+                            <tr><td colspan="6" style="text-align:center;color:#555;padding:10px;">Loading suspects...</td></tr>
                         </tbody>
                     </table>
                 </div>

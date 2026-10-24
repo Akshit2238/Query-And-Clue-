@@ -4,30 +4,76 @@
 
 const getApiBase = () => window.API_BASE_URL || 'http://localhost:8081/api';
 
-async function apiFetch(endpoint, options = {}) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    const fetchOptions = { ...options, signal: controller.signal };
+let activeApiRequests = 0;
+function showPrecinctConnecting(show, text) {
+    const banner = document.getElementById('precinctConnectingBanner');
+    const label = document.getElementById('precinctConnectingText');
+    if (!banner) return;
+    if (show) {
+        if (label && text) label.textContent = text;
+        banner.style.display = 'flex';
+    } else if (activeApiRequests <= 0) {
+        banner.style.display = 'none';
+    }
+}
 
-    try {
-        const res = await fetch(`${getApiBase()}${endpoint}`, fetchOptions);
-        clearTimeout(timeoutId);
-        return res;
-    } catch (e) {
-        clearTimeout(timeoutId);
-        const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-        if (isLocal && !getApiBase().includes('127.0.0.1')) {
-            try {
-                const fbCtrl = new AbortController();
-                const fbTimeout = setTimeout(() => fbCtrl.abort(), 6000);
-                const res = await fetch(`http://127.0.0.1:8081/api${endpoint}`, { ...options, signal: fbCtrl.signal });
-                clearTimeout(fbTimeout);
-                return res;
-            } catch (err2) {
-                // fall through
+async function apiFetch(endpoint, options = {}, retries = 2) {
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
+    const retryDelays = [1200, 2500, 4000];
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        activeApiRequests++;
+        const controller = new AbortController();
+        // 14-second timeout per attempt to comfortably allow Render spin-up
+        const timeoutMs = 14000;
+        const bannerTimer = setTimeout(() => {
+            showPrecinctConnecting(true, attempt > 0 
+                ? `Connecting to Police Records (Server waking up... attempt ${attempt + 1}/${retries + 1})`
+                : 'Connecting to Police Records Mainframe (Waking up precinct server on Render...)...');
+        }, 1200);
+
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const fetchOptions = { ...options, signal: controller.signal };
+
+        try {
+            const res = await fetch(`${getApiBase()}${endpoint}`, fetchOptions);
+            clearTimeout(bannerTimer);
+            clearTimeout(timeoutId);
+            activeApiRequests--;
+            showPrecinctConnecting(false);
+
+            // If Render cold-start returns 502/503/504 gateway errors, retry
+            if ([502, 503, 504].includes(res.status) && attempt < retries) {
+                await delay(retryDelays[attempt]);
+                continue;
+            }
+            return res;
+        } catch (e) {
+            clearTimeout(bannerTimer);
+            clearTimeout(timeoutId);
+            activeApiRequests--;
+            showPrecinctConnecting(false);
+
+            // Local dev fallback if remote fails
+            if (isLocal && !getApiBase().includes('127.0.0.1')) {
+                try {
+                    const fbCtrl = new AbortController();
+                    const fbTimeout = setTimeout(() => fbCtrl.abort(), 6000);
+                    const res = await fetch(`http://127.0.0.1:8081/api${endpoint}`, { ...options, signal: fbCtrl.signal });
+                    clearTimeout(fbTimeout);
+                    return res;
+                } catch (err2) {
+                    // fall through to retry
+                }
+            }
+
+            if (attempt < retries) {
+                await delay(retryDelays[attempt]);
+            } else {
+                throw e;
             }
         }
-        throw e;
     }
 }
 
@@ -753,14 +799,24 @@ async function loadCaseContext(id) {
         const bType = document.getElementById('briefingType');
         const bDate = document.getElementById('briefingDate');
         const bNarrative = document.getElementById('briefingNarrative');
-        const wCaseNo = document.getElementById('warrantCaseNo');
-        const dTitle = document.getElementById('debriefCaseTitle');
+        const wForm = document.getElementById('warrantFormId');
+        const wTitle = document.getElementById('warrantHeaderTitle');
+        const crimeType = (caseData.crimeType || 'FELONY').toUpperCase();
 
         if (bTitle) bTitle.textContent = `Case #${displayNum}: ${caseData.title}`;
         if (bDiff) bDiff.textContent = `DIFFICULTY: ${caseData.difficulty || 'NORMAL'}`.toUpperCase();
-        if (bType) bType.textContent = `TYPE: ${caseData.crimeType || 'FELONY'}`.toUpperCase();
+        if (bType) bType.textContent = `TYPE: ${crimeType}`;
         if (bDate) bDate.textContent = `DATE: ${caseData.crimeDate || '2026-09-10'}`;
         if (bNarrative && caseData.description) bNarrative.textContent = caseData.description;
+        if (wForm) wForm.textContent = `FORM MC-${caseId}-W841 - OFFICIAL APPREHENSION ORDER`;
+        if (wTitle) {
+            wTitle.innerHTML = `
+                Los Zorangeles Police Department<br>
+                <span style="font-size: 13px; font-weight: normal;">Minor Crimes &amp; Financial Fraud Squad</span><br><br>
+                ARREST WARRANT &bull; ${esc(crimeType)}<br>
+                <span style="font-size: 11px; font-weight: 500; color: #334155;">In Re: ${esc(caseData.title)}</span>
+            `;
+        }
         if (wCaseNo) wCaseNo.textContent = `Case No. #${displayNum} (DB ID: ${caseId})`;
         if (dTitle) dTitle.textContent = `Case #${displayNum}: ${caseData.title}`;
 
@@ -795,7 +851,7 @@ async function loadSuspects(id) {
     const tbody = document.getElementById('suspectsTableBody');
     if (!tbody) return;
 
-    setTableState(tbody, 4, 'Loading suspects...');
+    setTableState(tbody, 6, 'Loading suspects...');
 
     try {
         const res = await apiFetch(`/cases/${id}/suspects`);
@@ -803,20 +859,22 @@ async function loadSuspects(id) {
         const suspects = await res.json();
 
         if (!suspects.length) {
-            setTableState(tbody, 4, 'No suspects found for this case.');
+            setTableState(tbody, 6, 'No suspects found for this case.');
             return;
         }
 
         tbody.innerHTML = suspects.map(s => `
             <tr>
-                <td>${s.suspectId}</td>
-                <td>${esc(s.name ? s.name.split(' ')[0] : '—')}</td>
-                <td>${esc(s.name ? s.name.split(' ').slice(1).join(' ') : '—')}</td>
+                <td style="font-weight:bold;text-align:center;">${s.suspectId}</td>
+                <td style="font-weight:bold;color:#1e3a8a;">${esc(s.name || '—')}</td>
+                <td style="text-align:center;">${s.age != null ? s.age : '—'}</td>
                 <td>${esc(s.occupation || '—')}</td>
+                <td style="font-size:10.5px;color:#334155;">${esc(s.relationshipToVictim || '—')}</td>
+                <td style="font-size:10.5px;font-style:italic;">${esc(s.alibi || '—')}</td>
             </tr>
         `).join('');
     } catch (e) {
-        setTableState(tbody, 4, `Error: ${e.message}`);
+        setTableState(tbody, 6, `Error: ${e.message}`);
     }
 }
 

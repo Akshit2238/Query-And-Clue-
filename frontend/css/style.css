@@ -1307,3 +1307,30 @@ textarea.sunken-panel, input.sunken-panel, select.sunken-panel {
         max-height: 90vh;
     }
 }
+
+/* Precinct Server Cold-Start Banner */
+.precinct-wakeup-banner {
+    position: fixed;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f172a;
+    color: #38bdf8;
+    border: 1px solid #0284c7;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    font-weight: 600;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: pulsePrecinctGlow 1.5s infinite alternate;
+}
+@keyframes pulsePrecinctGlow {
+    from { box-shadow: 0 0 6px rgba(56,189,248,0.3); }
+    to { box-shadow: 0 0 16px rgba(56,189,248,0.7); }
+}
+

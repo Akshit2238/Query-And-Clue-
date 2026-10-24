@@ -138,6 +138,22 @@ class SqlPolicyValidatorTest {
     }
 
     @Test
+    void invalidMultipleStatementsWithDrop() {
+        var result = validator
+                .validate("SELECT * FROM suspects WHERE case_id = 1; DROP TABLE suspects;", 1);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("forbidden") || result.getErrorMessage().contains("Multiple") || result.getErrorMessage().contains("syntax"));
+    }
+
+    @Test
+    void invalidBypassAttemptWithLiteral() {
+        var result = validator
+                .validate("SELECT * FROM suspects WHERE alibi = 'case_id = 1'", 1);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("case_id"));
+    }
+
+    @Test
     void validWithClause() {
         var result = validator.validate(
                 "WITH suspect_names AS (SELECT name FROM suspects WHERE case_id = 1) SELECT * FROM suspect_names",

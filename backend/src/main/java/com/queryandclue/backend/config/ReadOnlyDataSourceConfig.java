@@ -32,6 +32,14 @@ public class ReadOnlyDataSourceConfig {
 
     @Bean
     public DataSource readOnlyDataSource() {
-        return readOnlyDataSourceProperties().initializeDataSourceBuilder().build();
+        try {
+            DataSourceProperties props = readOnlyDataSourceProperties();
+            if (props.getUrl() == null || props.getUrl().isBlank()) {
+                return primaryDataSource();
+            }
+            return props.initializeDataSourceBuilder().build();
+        } catch (Exception e) {
+            return primaryDataSource();
+        }
     }
 }

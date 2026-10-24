@@ -317,37 +317,86 @@
 
     <!-- HOW TO PLAY GUIDE MODAL -->
     <div class="popup-overlay" id="welcomeGuideOverlay">
-        <div class="popup" style="width: 520px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="popup" style="width: 580px; max-width: 95vw; max-height: 88vh; display: flex; flex-direction: column;">
             <div class="popup-titlebar" style="background: linear-gradient(90deg, #1e3a8a, #0284c7);">
                 <div class="popup-titlebar-left">
                     <span style="font-size: 13px;">📖</span>
-                    <span>How to Play &amp; Navigate — Detective Handbook</span>
+                    <span>Minor Crimes OS — Detective Field Handbook</span>
                 </div>
                 <button class="retro-btn" style="padding:0 8px;min-width:auto;height:20px;font-size:11px;" onclick="closeWelcomeGuide()">✕</button>
             </div>
             <div class="popup-body" style="overflow-y: auto; font-size: 11px; line-height: 1.5; color: #1e293b;">
                 <div style="background: #eff6ff; border-left: 3px solid #0284c7; padding: 6px 10px; margin-bottom: 10px;">
-                    <strong>The Mission:</strong> You are Detective Miller. Solve cases by querying database tables using real SQL to uncover the suspect whose alibi is a lie!
+                    <strong>The Mission:</strong> You are Detective Miller. Solve cases by querying database tables using real SQL to uncover the suspect whose alibi is contradicted by physical logs and phone records!
                 </div>
 
-                <div style="font-weight: bold; color: #000080; margin-bottom: 4px;">🎮 5 Steps to Close Any Case:</div>
-                <ol style="padding-left: 16px; margin-bottom: 10px; display:flex; flex-direction:column; gap:4px;">
+                <h3 style="color: #000080; margin: 10px 0 4px 0; font-size: 12px;">🔍 1. Database Schema Reference &amp; Table Relationships</h3>
+                <p style="margin-bottom: 6px; font-size: 10.5px;">All queries execute against the precinct database. Always filter by <code>WHERE case_id = {CASE_ID}</code>.</p>
+                
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 12px; font-family: monospace;">
+                    <tr style="background: #e2e8f0; text-align: left;">
+                        <th style="padding: 3px 5px; border: 1px solid #cbd5e1;">Table</th>
+                        <th style="padding: 3px 5px; border: 1px solid #cbd5e1;">Columns</th>
+                        <th style="padding: 3px 5px; border: 1px solid #cbd5e1;">Keys &amp; Relationships</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">suspects</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">suspect_id, name, age, occupation, relationship_to_victim, motive, alibi</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">PK: <code>suspect_id</code>. Primary entity.</td>
+                    </tr>
+                    <tr style="background: #f8fafc;">
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">access_logs</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">log_id, suspect_id, location, access_time, exit_time</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">FK: <code>suspect_id &rarr; suspects.suspect_id</code>.</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">phone_records</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">record_id, caller_suspect_id, receiver_suspect_id, call_time, call_duration</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">FKs: <code>caller_suspect_id</code> &amp; <code>receiver_suspect_id</code>.</td>
+                    </tr>
+                    <tr style="background: #f8fafc;">
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">evidence</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">evidence_id, description, location, evidence_type, date_found</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">Forensics, access cards, and physical clues.</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">transactions</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">transaction_id, suspect_id, amount, transaction_date, description</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">FK: <code>suspect_id &rarr; suspects.suspect_id</code>.</td>
+                    </tr>
+                    <tr style="background: #f8fafc;">
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">timeline_events</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">event_id, event_time, description</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">Chronology of key incident movements.</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1; font-weight: bold; color: #0284c7;">victims</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">victim_id, name, age, occupation, cause_of_crime</td>
+                        <td style="padding: 3px 5px; border: 1px solid #cbd5e1;">Victim details and cause of incident.</td>
+                    </tr>
+                </table>
+
+                <h3 style="color: #000080; margin: 10px 0 4px 0; font-size: 12px;">⚡ 2. Essential Queries &amp; JOIN Examples</h3>
+                <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-family: monospace; font-size: 10px;">
+                    <div style="background:#f1f5f9; padding:4px 8px; border:1px solid #cbd5e1;">
+                        <code>SELECT suspect_id, name, occupation, alibi FROM suspects WHERE case_id = 1;</code>
+                    </div>
+                    <div style="background:#f1f5f9; padding:4px 8px; border:1px solid #cbd5e1;">
+                        <code>SELECT s.name, a.location, a.access_time FROM access_logs a JOIN suspects s ON a.suspect_id = s.suspect_id WHERE a.case_id = 1 ORDER BY a.access_time;</code>
+                    </div>
+                    <div style="background:#f1f5f9; padding:4px 8px; border:1px solid #cbd5e1;">
+                        <code>SELECT c.name AS caller, r.name AS receiver, p.call_time FROM phone_records p JOIN suspects c ON p.caller_suspect_id = c.suspect_id JOIN suspects r ON p.receiver_suspect_id = r.suspect_id WHERE p.case_id = 1;</code>
+                    </div>
+                </div>
+
+                <h3 style="color: #000080; margin: 10px 0 4px 0; font-size: 12px;">🎮 3. How to Close Any Case:</h3>
+                <ol style="padding-left: 16px; margin-bottom: 10px; display:flex; flex-direction:column; gap:3px;">
                     <li><strong>1. Pick a Case:</strong> Select an active chapter and click <em>Begin Investigation</em>.</li>
                     <li><strong>2. Check the Evidence:</strong> Open <strong>Clues</strong> to read forensic reports and inspect recovered items.</li>
-                    <li><strong>3. Review the Suspects:</strong> Open <strong>Suspects</strong> to see everyone's motive and claimed alibi.</li>
-                    <li><strong>4. Run SQL Queries:</strong> Open <strong>Search Tables</strong> and run queries like:
-                        <div style="background:#f1f5f9; padding:4px 6px; font-family:monospace; margin:3px 0; border:1px solid #cbd5e1;">SELECT * FROM suspects WHERE case_id = 1;</div>
-                        <div style="background:#f1f5f9; padding:4px 6px; font-family:monospace; margin:3px 0; border:1px solid #cbd5e1;">SELECT * FROM access_logs WHERE case_id = 1;</div>
-                    </li>
-                    <li><strong>5. Catch the Lie &amp; Arrest:</strong> Compare what suspects claimed vs what the access logs or phone records prove. Open <strong>Arrest Warrant</strong> to arrest the guilty suspect!</li>
+                    <li><strong>3. Review the Suspects:</strong> Open <strong>Suspects</strong> to see everyone's claimed alibi.</li>
+                    <li><strong>4. Run SQL Queries:</strong> Open <strong>Search Tables</strong> to cross-reference timestamps with access logs.</li>
+                    <li><strong>5. Apprehend Culprit:</strong> Confront suspect with contradictory evidence and file the official arrest warrant!</li>
                 </ol>
-
-                <div style="font-weight: bold; color: #000080; margin-bottom: 4px;">💡 Desktop Tips:</div>
-                <ul style="padding-left: 16px; display:flex; flex-direction:column; gap:3px;">
-                    <li>Use the <strong>Bottom Taskbar</strong> or <strong>Left Desktop Icons</strong> to open/minimize windows.</li>
-                    <li>Clicking a taskbar button minimizes or brings the window to front.</li>
-                    <li>Use the <strong>Notepad</strong> to take notes and compare suspect timelines.</li>
-                </ul>
 
                 <div class="popup-footer" style="margin-top: 10px;">
                     <button class="retro-btn primary" onclick="closeWelcomeGuide()" style="width: 100%;">Understood, Let's Play!</button>
@@ -402,7 +451,11 @@
         let selectedCaseIndex = 1;
 
         async function fetchWithFallback(endpoint) {
-            const apiBase = (typeof window !== 'undefined' && window.API_BASE_URL) ? window.API_BASE_URL : 'http://localhost:8081/api';
+            let apiBase = (typeof window !== 'undefined' && window.API_BASE_URL) ? window.API_BASE_URL : '';
+            if (!apiBase || apiBase.includes('query-and-clue-9sag.onrender.com')) {
+                const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                apiBase = isLocal ? 'http://localhost:8081/api' : 'https://query-and-clue.onrender.com/api';
+            }
             try {
                 const res = await fetch(`${apiBase}${endpoint}`);
                 return res;

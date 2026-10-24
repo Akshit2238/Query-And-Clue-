@@ -2,7 +2,16 @@
 // QUERY & CLUE — RETRO OS LOGIC (app.js)
 // =========================================
 
-const getApiBase = () => window.API_BASE_URL || 'http://localhost:8081/api';
+const getApiBase = () => {
+    if (typeof window !== 'undefined' && window.API_BASE_URL) {
+        if (window.API_BASE_URL.includes('query-and-clue-9sag.onrender.com')) {
+            return 'https://query-and-clue.onrender.com/api';
+        }
+        return window.API_BASE_URL;
+    }
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    return isLocal ? 'http://localhost:8081/api' : 'https://query-and-clue.onrender.com/api';
+};
 
 let activeApiRequests = 0;
 function showPrecinctConnecting(show, text) {
@@ -894,8 +903,19 @@ async function loadEvidence(id) {
             apiFetch(`/cases/${id}/crime-scenes`)
         ]);
 
-        const evidence = evRes.ok ? await evRes.json() : [];
-        const scenes = sceneRes.ok ? await sceneRes.json() : [];
+        if (!evRes.ok || !sceneRes.ok) {
+            grid.innerHTML = `
+                <div style="padding:14px;color:#991b1b;background:#fee2e2;border:1px solid #f87171;margin:8px;font-size:11px;">
+                    <strong>⚠️ Evidence Mainframe Error (HTTP ${evRes.status || sceneRes.status})</strong>
+                    <div style="margin-top:4px;color:#555;">Unable to retrieve forensic evidence from police records server.</div>
+                    <button class="retro-btn" onclick="loadEvidence(${id})" style="margin-top:8px;padding:2px 10px;font-weight:bold;">Retry Connection</button>
+                </div>
+            `;
+            return;
+        }
+
+        const evidence = await evRes.json();
+        const scenes = await sceneRes.json();
 
         if (!evidence.length && !scenes.length) {
             grid.innerHTML = '<div style="padding:12px;font-size:11px;color:#555;">No clues found for this case.</div>';

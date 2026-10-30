@@ -5,7 +5,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 :root {
-    --desktop-bg: #008080;
+    --desktop-bg: #0a0e1a;
     --win-bg: #c0c0c0;
     --win-bg-light: #dfdfdf;
     --win-border-light: #ffffff;
@@ -41,9 +41,81 @@ html, body {
     position: relative;
     width: 100vw;
     height: calc(100vh - 36px);
-    background: #008080 url('../assets/windows_xp_bliss.jpg') no-repeat center center / cover;
+    background:
+        /* Rain streaks */
+        repeating-linear-gradient(
+            180deg,
+            transparent 0px,
+            transparent 3px,
+            rgba(100,160,255,0.04) 3px,
+            rgba(100,160,255,0.04) 4px
+        ),
+        /* Neon sign glow — red */
+        radial-gradient(ellipse 180px 80px at 72% 28%, rgba(220,40,40,0.18) 0%, transparent 70%),
+        /* Neon sign glow — blue/purple */
+        radial-gradient(ellipse 220px 100px at 20% 35%, rgba(60,60,200,0.22) 0%, transparent 65%),
+        /* Streetlamp cone left */
+        radial-gradient(ellipse 120px 200px at 8% 95%, rgba(255,210,100,0.14) 0%, transparent 60%),
+        /* Streetlamp cone right */
+        radial-gradient(ellipse 120px 200px at 92% 95%, rgba(255,210,100,0.14) 0%, transparent 60%),
+        /* Cityscape silhouette gradient */
+        linear-gradient(
+            180deg,
+            #0a0e1a 0%,
+            #0d1220 40%,
+            #111827 60%,
+            #0f172a 100%
+        );
     overflow: hidden;
 }
+
+/* =========================================
+   NOIR DESKTOP WALLPAPER ENHANCEMENTS
+   ========================================= */
+
+/* Building silhouettes at bottom */
+#desktop::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 42%;
+    background:
+        linear-gradient(0deg, #060a14 0px, #060a14 55px, transparent 55px),
+        repeating-linear-gradient(90deg,
+            #060a14 0px,   #060a14 28px,  transparent 28px,  transparent 36px,
+            #060a14 36px,  #060a14 95px,  transparent 95px,  transparent 103px,
+            #060a14 103px, #060a14 158px, transparent 158px, transparent 166px,
+            #060a14 166px, #060a14 62px,  transparent 62px,  transparent 70px,
+            #060a14 70px,  #060a14 130px, transparent 130px, transparent 138px
+        );
+    mask-image: linear-gradient(180deg, transparent 0%, black 30%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 30%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Subtle animated rain streaks */
+#desktop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        174deg,
+        transparent 0px, transparent 55px,
+        rgba(140,190,255,0.045) 55px, rgba(140,190,255,0.045) 56px
+    );
+    animation: qcRain 2.8s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes qcRain {
+    0%   { background-position: 0 0; }
+    100% { background-position: -40px 220px; }
+}
+
 
 .desktop-icons {
     position: absolute;

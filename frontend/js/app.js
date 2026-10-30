@@ -2172,6 +2172,28 @@ function initStageTracker() {
             updateInvestigationStage(currentInvestigationStage);
         });
     }
+
+    // Collapse toggle
+    const collapseBtn = document.getElementById('stageCollapseBtn');
+    const bar = document.getElementById('stageTrackerBar');
+    if (collapseBtn && bar) {
+        if (localStorage.getItem('qc_bar_collapsed') === 'true') {
+            bar.classList.add('collapsed');
+            collapseBtn.textContent = String.fromCharCode(9660); // down arrow
+        }
+        collapseBtn.addEventListener('click', () => {
+            const isNowCollapsed = bar.classList.toggle('collapsed');
+            collapseBtn.textContent = isNowCollapsed ? String.fromCharCode(9660) : String.fromCharCode(9650);
+            localStorage.setItem('qc_bar_collapsed', isNowCollapsed ? 'true' : 'false');
+        });
+        bar.addEventListener('click', (e) => {
+            if (bar.classList.contains('collapsed') && e.target !== collapseBtn) {
+                bar.classList.remove('collapsed');
+                collapseBtn.textContent = String.fromCharCode(9650);
+                localStorage.setItem('qc_bar_collapsed', 'false');
+            }
+        });
+    }
 }
 
 function updateInvestigationStage(stage) {

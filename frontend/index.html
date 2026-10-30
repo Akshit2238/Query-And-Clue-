@@ -36,18 +36,18 @@
 
         <!-- INVESTIGATION STAGE TRACKER & EXPERIENCED TOGGLE -->
         <div class="stage-tracker-bar" id="stageTrackerBar">
-            <span style="font-weight:bold;color:#1e3a8a;">MISSION STAGE:</span>
+            <span>DISPATCH</span>
             <span class="stage-indicator active" id="stage1Ind">1. Crime Scene</span>
             <span class="stage-indicator" id="stage2Ind">2. Data Forensics</span>
             <span class="stage-indicator" id="stage3Ind">3. Apprehend Culprit</span>
-
             <div class="experienced-toggle">
                 <label style="cursor:pointer;display:flex;align-items:center;gap:4px;">
                     <input type="checkbox" id="chkExperiencedMode">
-                    <span>Experienced Mode (All Tools Unlocked)</span>
+                    <span>Experienced Mode</span>
                 </label>
-                <button class="retro-btn" id="btnReplayBriefing" style="padding:1px 6px;font-size:10px;margin-left:6px;" title="Re-read Case Dossier">📋 Dossier</button>
+                <button class="retro-btn" id="btnReplayBriefing" style="padding:1px 6px;font-size:10px;margin-left:6px;" title="Re-read Case Dossier">Dossier</button>
             </div>
+            <button id="stageCollapseBtn" title="Collapse status bar">&#9650;</button>
         </div>
 
         <!-- CASE INTRO SCREEN / BRIEFING OVERLAY -->

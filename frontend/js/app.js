@@ -118,6 +118,7 @@ function init() {
     initBriefingControls();
     initStageTracker();
     initArrestInterrogation();
+    updateGatedIcons();
     initSchemaDrawer();
     setupQueryHistoryNav();
     initWindowTiling();
@@ -186,10 +187,86 @@ function initDetectiveBadge() {
     if (badgeAvatar) badgeAvatar.textContent = avatar;
 }
 
+
+// =========================================
+// PROGRESSIVE TOOL GATING & HELPER TOAST
+// =========================================
+
+window.inspectedCluesCount = 0;
+
+function isWindowLocked(winId) {
+    if (localStorage.getItem('qc_experienced_mode') === 'true') return null;
+    if (winId === 'win-search') {
+        const inspected = (window.inspectedCluesCount || 0) > 0;
+        if (!inspected && sessionQueriesCount === 0 && currentInvestigationStage < 2) {
+            return "🔒 Database Search Locked: Examine at least one physical clue in the Clues Locker before accessing mainframe databases.";
+        }
+    }
+    if (winId === 'win-arrest') {
+        if (sessionQueriesCount === 0 && currentInvestigationStage < 3) {
+            return "🔒 Warrant Filing Locked: Execute at least one SQL query in the mainframe to substantiate forensic evidence before interrogating or arresting suspects.";
+        }
+    }
+    return null;
+}
+
+function showDetectiveToast(msg) {
+    let toast = document.getElementById('detectiveToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'detectiveToast';
+        toast.className = 'detective-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+        toast.classList.remove('visible');
+    }, 4000);
+}
+
+function updateGatedIcons() {
+    const isExp = localStorage.getItem('qc_experienced_mode') === 'true';
+    document.querySelectorAll('.icon-btn[data-window]').forEach(btn => {
+        const winId = btn.getAttribute('data-window');
+        const lockReason = isExp ? null : isWindowLocked(winId);
+        btn.classList.toggle('tool-locked', lockReason !== null);
+        if (lockReason) {
+            btn.setAttribute('title', lockReason);
+        } else {
+            const originalTitle = btn.id ? btn.id.replace('btn-icon-', '') : '';
+            btn.setAttribute('title', originalTitle);
+        }
+    });
+}
+
+function getCaseInvestigativeHint(cId) {
+    const num = Number(cId);
+    if (num === 1) {
+        return "Cross-reference access_logs for Floor 7 and the Executive Office between 20:30 and 21:40 with the suspect badge IDs.";
+    } else if (num === 2) {
+        return "Query access_logs for the Server Room around 22:30 and compare with purchase records for red clothing in transactions.";
+    } else if (num === 11) {
+        return "Review surveillance_logs around The Pit entrance and check which security guard was on duty during Maya's entry.";
+    } else if (num === 12) {
+        return "Examine Grandstand Stables access_logs at 14:00 and search suspect lockers for cutting tool receipts.";
+    } else if (num === 13) {
+        return "Inspect the Vault Room door latch physical clue and cross-reference back hallway access_logs with the weapon location.";
+    }
+    return "Check access_logs timestamps against suspect alibis and verify any large financial transactions.";
+}
+
 // Window Focus & Bring to Front
 function bringToFront(win) {
     if (typeof win === 'string') win = document.getElementById(win);
     if (!win) return;
+    const lockReason = isWindowLocked(win.id);
+    if (lockReason) {
+        showDetectiveToast(lockReason);
+        playSfx('denied');
+        return;
+    }
     window.highestZ = (window.highestZ || 100) + 1;
     win.style.zIndex = window.highestZ;
     win.classList.remove('hidden');
@@ -1083,6 +1160,8 @@ async function loadEvidence(id) {
 
 // Forensic Evidence Viewer Inspector Logic
 function openEvidenceViewer(item, isScene) {
+    window.inspectedCluesCount = (window.inspectedCluesCount || 0) + 1;
+    if (typeof updateGatedIcons === 'function') updateGatedIcons();
     const win = document.getElementById('win-evidence-detail');
     if (!win) return;
 
@@ -1512,6 +1591,73 @@ if (btnExecute) {
             return;
         }
 
+        // =========================================
+        // SECRET TERMINAL & MAINFRAME COMMANDS
+        // =========================================
+        const cleanCmd = query.trim().toUpperCase();
+        if (['HELP', ':HELP', 'COMMANDS', 'MAN'].includes(cleanCmd)) {
+            headEl.innerHTML = '<tr><th>Command</th><th>Clearance</th><th>Description</th></tr>';
+            bodyEl.innerHTML = `
+                <tr><td><code>HINT</code></td><td>L1 Detective</td><td>Reveal an investigative lead for the active case</td></tr>
+                <tr><td><code>STATUS</code></td><td>L1 Detective</td><td>Display case progress, query count, and warrant metrics</td></tr>
+                <tr><td><code>CLEARANCE LEVEL 5</code></td><td>Admin / Chief</td><td>Override all investigation locks & unlock full toolkit</td></tr>
+                <tr><td><code>CLEAR</code></td><td>Standard</td><td>Clear the terminal workspace</td></tr>
+            `;
+            statusEl.textContent = 'Mainframe Help System Active';
+            statusEl.style.color = '#000080';
+            playSfx('clue');
+            return;
+        }
+
+        if (['HINT', ':HINT', 'CLUE'].includes(cleanCmd)) {
+            const hintText = getCaseInvestigativeHint(caseId);
+            headEl.innerHTML = '<tr><th>Lead / Forensic Advisory</th></tr>';
+            bodyEl.innerHTML = `<tr><td style="background:#fef3c7;border:1px solid #f59e0b;padding:12px;color:#92400e;">💡 <strong>Forensic Lead (Case #${caseId}):</strong> ${hintText}</td></tr>`;
+            statusEl.textContent = 'Forensic lead decrypted.';
+            statusEl.style.color = '#92400e';
+            playSfx('clue');
+            return;
+        }
+
+        if (['CLEARANCE LEVEL 5', 'OVERRIDE', 'UNLOCK ALL', 'SUDO', 'ADMIN'].includes(cleanCmd)) {
+            localStorage.setItem('qc_experienced_mode', 'true');
+            const chk = document.getElementById('chkExperiencedMode');
+            if (chk) chk.checked = true;
+            updateInvestigationStage(3);
+            if (typeof updateGatedIcons === 'function') updateGatedIcons();
+            headEl.innerHTML = '<tr><th>Authorization Level</th><th>Security Clearance Status</th></tr>';
+            bodyEl.innerHTML = '<tr><td><code>LEVEL 5 CHIEF</code></td><td style="color:#166534;background:#dcfce7;font-weight:bold;">ACCESS GRANTED: All police mainframe databases, warrants, and tools unlocked.</td></tr>';
+            statusEl.textContent = 'Clearance override accepted.';
+            statusEl.style.color = '#166534';
+            playSfx('stamp');
+            return;
+        }
+
+        if (['STATUS', 'INFO', 'PROGRESS'].includes(cleanCmd)) {
+            const timeElapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+            headEl.innerHTML = '<tr><th>Metric</th><th>Value</th></tr>';
+            bodyEl.innerHTML = `
+                <tr><td>Active Case</td><td>#${caseId} - ${esc(window.currentCaseData?.title || 'Active Investigation')}</td></tr>
+                <tr><td>Queries Executed</td><td>${sessionQueriesCount}</td></tr>
+                <tr><td>Denied Warrants</td><td>${sessionIncorrectAccusations}</td></tr>
+                <tr><td>Clues Inspected</td><td>${window.inspectedCluesCount || 0}</td></tr>
+                <tr><td>Investigation Stage</td><td>${currentInvestigationStage}/3</td></tr>
+                <tr><td>Session Duration</td><td>${timeElapsed}s</td></tr>
+            `;
+            statusEl.textContent = 'Status report generated.';
+            statusEl.style.color = '#000';
+            playSfx('query');
+            return;
+        }
+
+        if (cleanCmd === 'CLEAR' || cleanCmd === 'CLS') {
+            headEl.innerHTML = '<tr><th>Status</th><th>Message</th></tr>';
+            bodyEl.innerHTML = '<tr><td>READY</td><td>Workspace cleared.</td></tr>';
+            statusEl.textContent = 'Terminal cleared.';
+            queryInput.value = '';
+            return;
+        }
+
         // Auto-translate sequential case number (e.g. case_id = 2) to actual DB caseId (e.g. 30001)
         let queryToSend = query;
         if (window.activeCaseIndex && Number(window.activeCaseIndex) !== Number(caseId)) {
@@ -1548,6 +1694,7 @@ if (btnExecute) {
             }
 
             sessionQueriesCount++;
+            if (typeof updateGatedIcons === 'function') updateGatedIcons();
             if (currentInvestigationStage < 2) {
                 updateInvestigationStage(2);
             }
@@ -2170,6 +2317,7 @@ function initStageTracker() {
         chk.addEventListener('change', () => {
             localStorage.setItem('qc_experienced_mode', chk.checked ? 'true' : 'false');
             updateInvestigationStage(currentInvestigationStage);
+            if (typeof updateGatedIcons === 'function') updateGatedIcons();
         });
     }
 

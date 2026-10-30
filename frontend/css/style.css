@@ -1609,3 +1609,49 @@ textarea.sunken-panel, input.sunken-panel, select.sunken-panel {
     color: #475569 !important;
     border: 1px solid #cbd5e1 !important;
 }
+
+
+/* =========================================
+   PROGRESSIVE TOOL GATING & TOAST
+   ========================================= */
+
+.icon-btn.tool-locked {
+    opacity: 0.65;
+    position: relative;
+}
+
+.icon-btn.tool-locked::after {
+    content: '🔒';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 13px;
+    filter: drop-shadow(1px 1px 0px #000);
+}
+
+.detective-toast {
+    position: fixed;
+    top: 34px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    background: #fef3c7;
+    border: 2px solid #b45309;
+    color: #78350f;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    padding: 8px 18px;
+    font-size: 12px;
+    font-weight: bold;
+    font-family: var(--font-ui);
+    z-index: 999999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    border-radius: 4px;
+    max-width: 90vw;
+    text-align: center;
+}
+
+.detective-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}

@@ -826,6 +826,8 @@ async function loadCaseContext(id) {
                 <span style="font-size: 11px; font-weight: 500; color: #334155;">In Re: ${esc(caseData.title)}</span>
             `;
         }
+        const wCaseNo = document.getElementById('warrantCaseNo');
+        const dTitle = document.getElementById('debriefCaseTitle');
         if (wCaseNo) wCaseNo.textContent = `Case No. #${displayNum} (DB ID: ${caseId})`;
         if (dTitle) dTitle.textContent = `Case #${displayNum}: ${caseData.title}`;
 

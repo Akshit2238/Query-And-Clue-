@@ -761,6 +761,11 @@
                             <div class="color-swatch" style="background: #86efac;" data-color="#86efac"></div>
                             <div class="color-swatch" style="background: #475569;" data-color="#475569"></div>
                         </div>
+
+                        <div style="margin-top:auto;display:flex;flex-direction:column;gap:3px;padding-top:6px;border-top:1px solid #cbd5e1;">
+                            <button type="button" class="retro-btn" id="btnExportNotes" style="font-size:9px;padding:3px 2px;width:100%;" title="Download investigative notes as text file">💾 Export</button>
+                            <button type="button" class="retro-btn" id="btnClearNotes" style="font-size:9px;padding:3px 2px;width:100%;" title="Clear current notepad page">🗑️ Clear</button>
+                        </div>
                     </div>
 
                     <textarea class="notepad-canvas" id="notepadText" placeholder="Write case notes here..."></textarea>
@@ -826,6 +831,7 @@
                                 <th><u>occupation</u></th>
                                 <th><u>relationship</u></th>
                                 <th><u>alibi</u></th>
+                                <th style="width: 110px;"><u>triage / status</u></th>
                             </tr>
                         </thead>
                         <tbody id="suspectsTableBody">
@@ -923,11 +929,12 @@
             </div>
             <div class="window-body">
                 <div class="sunken-panel" style="padding:12px;background:#fff;height:100%;font-size:12px;">
-                    <strong>Display Preferences</strong>
+                    <strong>Display & Investigation Preferences</strong>
                     <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
-                        <label><input type="checkbox" checked> 90s CRT Scanline Overlay</label>
-                        <label><input type="checkbox" checked> Window Shadow Effects</label>
-                        <label><input type="checkbox" checked> Auto-save Scratchpad Notes</label>
+                        <label><input type="checkbox" id="settingCrt"> 90s CRT Scanline Overlay</label>
+                        <label><input type="checkbox" id="settingShadows" checked> Window Shadow Effects</label>
+                        <label><input type="checkbox" id="settingAutosave" checked> Auto-save Scratchpad Notes</label>
+                        <label><input type="checkbox" id="settingSfx" checked> Retro Synthesizer Sound Effects</label>
                     </div>
                 </div>
             </div>

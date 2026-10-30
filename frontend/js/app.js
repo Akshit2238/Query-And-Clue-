@@ -123,6 +123,7 @@ function init() {
     initWindowTiling();
     initPrintDossier();
     initNotepadPinning();
+    initNotepadExport();
 
     loadCaseContext(caseId);
 }
@@ -720,23 +721,58 @@ function initMusicPlayer() {
 
 // Settings Window Preferences
 function initSettings() {
-    const checkboxes = document.querySelectorAll('#win-settings input[type="checkbox"]');
-    if (checkboxes.length < 3) return;
-    const [scanlines, shadows, autosave] = checkboxes;
+    const chkCrt = document.getElementById('settingCrt');
+    const chkShadows = document.getElementById('settingShadows');
+    const chkAutosave = document.getElementById('settingAutosave');
+    const chkSfx = document.getElementById('settingSfx');
 
-    scanlines.addEventListener('change', () => {
-        document.body.classList.toggle('no-scanlines', !scanlines.checked);
-        localStorage.setItem('qc_pref_scanlines', scanlines.checked);
-    });
+    // Restore preferences
+    const prefScanlines = localStorage.getItem('qc_pref_scanlines') === 'true';
+    if (chkCrt) chkCrt.checked = prefScanlines;
+    document.body.classList.toggle('no-scanlines', !prefScanlines);
 
-    shadows.addEventListener('change', () => {
-        document.querySelectorAll('.retro-window').forEach(w => w.classList.toggle('no-shadow', !shadows.checked));
-        localStorage.setItem('qc_pref_shadows', shadows.checked);
-    });
+    const prefShadows = localStorage.getItem('qc_pref_shadows') !== 'false';
+    if (chkShadows) chkShadows.checked = prefShadows;
+    document.querySelectorAll('.retro-window').forEach(w => w.classList.toggle('no-shadow', !prefShadows));
 
-    autosave.addEventListener('change', () => {
-        localStorage.setItem('qc_setting_autosave', autosave.checked);
-    });
+    const prefAutosave = localStorage.getItem('qc_setting_autosave') !== 'false';
+    if (chkAutosave) chkAutosave.checked = prefAutosave;
+
+    const prefSfx = localStorage.getItem('qc_audio_volume') !== '0';
+    if (chkSfx) chkSfx.checked = prefSfx;
+
+    if (chkCrt) {
+        chkCrt.addEventListener('change', () => {
+            document.body.classList.toggle('no-scanlines', !chkCrt.checked);
+            localStorage.setItem('qc_pref_scanlines', chkCrt.checked);
+            playSfx('pin');
+        });
+    }
+
+    if (chkShadows) {
+        chkShadows.addEventListener('change', () => {
+            document.querySelectorAll('.retro-window').forEach(w => w.classList.toggle('no-shadow', !chkShadows.checked));
+            localStorage.setItem('qc_pref_shadows', chkShadows.checked);
+            playSfx('pin');
+        });
+    }
+
+    if (chkAutosave) {
+        chkAutosave.addEventListener('change', () => {
+            localStorage.setItem('qc_setting_autosave', chkAutosave.checked);
+            playSfx('pin');
+        });
+    }
+
+    if (chkSfx) {
+        chkSfx.addEventListener('change', () => {
+            const vol = chkSfx.checked ? '50' : '0';
+            localStorage.setItem('qc_audio_volume', vol);
+            const slider = document.querySelector('#win-music input[type="range"]');
+            if (slider) slider.value = vol;
+            if (chkSfx.checked) playSfx('clue');
+        });
+    }
 }
 
 // Web Browser Window Navigation
@@ -907,7 +943,7 @@ async function loadSuspects(id) {
     const tbody = document.getElementById('suspectsTableBody');
     if (!tbody) return;
 
-    setTableState(tbody, 6, 'Loading suspects...');
+    setTableState(tbody, 7, 'Loading suspects...');
 
     try {
         const res = await apiFetch(`/cases/${id}/suspects`);
@@ -915,22 +951,53 @@ async function loadSuspects(id) {
         const suspects = await res.json();
 
         if (!suspects.length) {
-            setTableState(tbody, 6, 'No suspects found for this case.');
+            setTableState(tbody, 7, 'No suspects found for this case.');
             return;
         }
 
+        const getBadge = (sid) => {
+            const st = localStorage.getItem(`qc_suspect_status_${id}_${sid}`) || 'inquiry';
+            if (st === 'cleared') return '<span class="suspect-triage-badge triage-cleared" title="Click to change status">🟢 Cleared</span>';
+            if (st === 'prime') return '<span class="suspect-triage-badge triage-prime" title="Click to change status">🔴 Prime</span>';
+            return '<span class="suspect-triage-badge triage-inquiry" title="Click to change status">⚪ Inquiry</span>';
+        };
+
         tbody.innerHTML = suspects.map(s => `
-            <tr>
+            <tr data-suspect-id="${s.suspectId}">
                 <td style="font-weight:bold;text-align:center;">${s.suspectId}</td>
-                <td style="font-weight:bold;color:#1e3a8a;">${esc(s.name || '—')}</td>
-                <td style="text-align:center;">${s.age != null ? s.age : '—'}</td>
-                <td>${esc(s.occupation || '—')}</td>
-                <td style="font-size:10.5px;color:#334155;">${esc(s.relationshipToVictim || '—')}</td>
-                <td style="font-size:10.5px;font-style:italic;">${esc(s.alibi || '—')}</td>
+                <td style="font-weight:bold;color:#1e3a8a;">${esc(s.name || '-')}</td>
+                <td style="text-align:center;">${s.age != null ? s.age : '-'}</td>
+                <td>${esc(s.occupation || '-')}</td>
+                <td style="font-size:10.5px;color:#334155;">${esc(s.relationshipToVictim || '-')}</td>
+                <td style="font-size:10.5px;font-style:italic;">${esc(s.alibi || '-')}</td>
+                <td style="text-align:center;">
+                    <button type="button" class="retro-btn btn-triage" data-suspect-id="${s.suspectId}" style="font-size:10px;padding:1px 4px;width:100%;cursor:pointer;">
+                        ${getBadge(s.suspectId)}
+                    </button>
+                </td>
             </tr>
         `).join('');
+
+        tbody.onclick = (e) => {
+            const btn = e.target.closest('.btn-triage');
+            if (!btn) return;
+            const sid = btn.dataset.suspectId;
+            const current = localStorage.getItem(`qc_suspect_status_${id}_${sid}`) || 'inquiry';
+            let next = 'cleared';
+            if (current === 'cleared') next = 'prime';
+            else if (current === 'prime') next = 'inquiry';
+
+            localStorage.setItem(`qc_suspect_status_${id}_${sid}`, next);
+            btn.innerHTML = getBadge(sid);
+            playSfx('pin');
+
+            if (next === 'prime') {
+                const sel = document.getElementById('accusedSuspect');
+                if (sel) sel.value = sid;
+            }
+        };
     } catch (e) {
-        setTableState(tbody, 6, `Error: ${e.message}`);
+        setTableState(tbody, 7, `Error: ${e.message}`);
     }
 }
 
@@ -1374,6 +1441,47 @@ async function generateCase() {
 // SQL QUERY EXECUTION
 // =========================================
 
+
+// Intelligent SQL Diagnostic Assistant
+function getSqlDiagnosticHint(query, errorMsg) {
+    const q = (query || '').toLowerCase().trim();
+    const err = (errorMsg || '').toLowerCase();
+
+    // Table typos
+    if (/\bfrom\s+suspect\b/.test(q)) return "Table name is plural: use 'FROM suspects'.";
+    if (/\bfrom\s+(access_log|log|logs)\b/.test(q)) return "Table name is 'FROM access_logs'.";
+    if (/\bfrom\s+(transaction|trans)\b/.test(q)) return "Table name is 'FROM transactions'.";
+    if (/\bfrom\s+(phone|calls|call_records)\b/.test(q)) return "Table name is 'FROM phone_records'.";
+    if (/\bfrom\s+(clue|clues|evidences)\b/.test(q)) return "Table name is 'FROM evidence'.";
+    if (/\bfrom\s+(timeline|events)\b/.test(q)) return "Table name is 'FROM timeline_events'.";
+    if (/\bfrom\s+(scene|scenes)\b/.test(q)) return "Table name is 'FROM crime_scenes'.";
+
+    // Filter hints
+    const currentId = caseId || 1;
+    if (!q.includes('case_id')) {
+        return `Remember to filter by active case: add 'WHERE case_id = ${currentId}' to isolate relevant incident records.`;
+    }
+
+    // Missing JOIN condition
+    if (q.includes('join') && !q.includes('on')) {
+        return "JOIN clause requires an ON condition (e.g. 'JOIN suspects s ON a.suspect_id = s.suspect_id').";
+    }
+
+    // Misplaced columns
+    if ((q.includes('alibi') || q.includes('motive')) && !q.includes('suspects')) {
+        return "'alibi' and 'motive' exist in the 'suspects' table. JOIN suspects to view suspect background.";
+    }
+    if (q.includes('amount') && !q.includes('transactions')) {
+        return "'amount' column exists in 'transactions'. JOIN transactions to examine monetary movements.";
+    }
+
+    if (err.includes('policy') || err.includes('syntax') || err.includes('validation')) {
+        return "Minor Crimes OS strictly permits SELECT queries. Check for trailing commas or unescaped characters.";
+    }
+
+    return null;
+}
+
 const btnExecute = document.getElementById('executeQuery');
 if (btnExecute) {
     btnExecute.addEventListener('click', async () => {
@@ -1410,10 +1518,18 @@ if (btnExecute) {
             const data = await res.json();
 
             if (!res.ok) {
+                const hint = getSqlDiagnosticHint(queryToSend, data.message);
                 statusEl.textContent = `Error: ${data.message || 'Execution failed'}`;
                 statusEl.style.color = '#c00';
-                headEl.innerHTML = '<tr><th>Error</th></tr>';
-                bodyEl.innerHTML = `<tr><td style="color:#c00;">${esc(data.message || 'Query failed')}</td></tr>`;
+                headEl.innerHTML = '<tr><th>Execution Diagnostic</th></tr>';
+                bodyEl.innerHTML = `
+                    <tr>
+                        <td style="color:#991b1b;background:#fee2e2;padding:12px;font-size:12px;border:1px solid #f87171;">
+                            <strong>⚠️ Query Failed:</strong> ${esc(data.message || 'Execution error')}
+                            ${hint ? `<div style="margin-top:8px;padding:6px 10px;background:#fef3c7;border:1px solid #f59e0b;color:#92400e;font-size:11px;border-radius:3px;font-weight:normal;">💡 <strong>Detective Hint:</strong> ${hint}</div>` : ''}
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
@@ -2408,6 +2524,57 @@ function initNotepadPinning() {
             const cells = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim());
             if (!cells.length) return;
             window.pinToNotepad(`[Record Pin]: ${cells.join(' | ')}`);
+        });
+    }
+}
+
+// Notepad Export to Text File & Clear Page
+function initNotepadExport() {
+    const btnExport = document.getElementById('btnExportNotes');
+    if (btnExport) {
+        btnExport.addEventListener('click', () => {
+            let combined = `=================================================\n`;
+            combined += `LZPD MINOR CRIMES DIVISION — CASE #${caseId || 1} INVESTIGATION NOTES\n`;
+            combined += `Exported: ${new Date().toLocaleString()}\n`;
+            combined += `=================================================\n\n`;
+
+            for (let p = 1; p <= 6; p++) {
+                const note = localStorage.getItem(`qc_notepad_page_${p}`) || '';
+                if (note.trim()) {
+                    combined += `--- [PAGE ${p}] ---\n${note.trim()}\n\n`;
+                }
+            }
+
+            const activeText = document.getElementById('notepadText')?.value || '';
+            if (!combined.includes(activeText.trim()) && activeText.trim()) {
+                combined += `--- [CURRENT ACTIVE NOTES] ---\n${activeText.trim()}\n\n`;
+            }
+
+            const blob = new Blob([combined], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `case-${caseId || 1}-detective-notes.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            playSfx('pin');
+        });
+    }
+
+    const btnClear = document.getElementById('btnClearNotes');
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            const notepad = document.getElementById('notepadText');
+            if (!notepad) return;
+            if (confirm('Clear current Notepad page?')) {
+                notepad.value = '';
+                const p = window.activeNotepadPage || 1;
+                localStorage.setItem(`qc_notepad_page_${p}`, '');
+                if (p === 1) localStorage.setItem('qc_notepad_notes', '');
+                playSfx('pin');
+            }
         });
     }
 }

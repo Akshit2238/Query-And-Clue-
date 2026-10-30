@@ -884,7 +884,13 @@ async function loadCaseContext(id) {
         const crimeType = (caseData.crimeType || 'FELONY').toUpperCase();
 
         if (bTitle) bTitle.textContent = `Case #${displayNum}: ${caseData.title}`;
-        if (bDiff) bDiff.textContent = `DIFFICULTY: ${caseData.difficulty || 'NORMAL'}`.toUpperCase();
+        if (bDiff) {
+            const diffText = (caseData.difficulty || 'Normal').toUpperCase();
+            bDiff.textContent = `DIFFICULTY: ${diffText}`;
+            bDiff.style.background = diffText === 'HARD' ? '#fee2e2' : diffText === 'MEDIUM' ? '#fef3c7' : '#dcfce7';
+            bDiff.style.borderColor = diffText === 'HARD' ? '#f87171' : diffText === 'MEDIUM' ? '#f59e0b' : '#4ade80';
+            bDiff.style.color = diffText === 'HARD' ? '#991b1b' : diffText === 'MEDIUM' ? '#92400e' : '#166534';
+        }
         if (bType) bType.textContent = `TYPE: ${crimeType}`;
         if (bDate) bDate.textContent = `DATE: ${caseData.crimeDate || '2026-09-10'}`;
         if (bNarrative && caseData.description) bNarrative.textContent = caseData.description;
@@ -1497,6 +1503,14 @@ if (btnExecute) {
             statusEl.style.color = '#c00';
             return;
         }
+        // Guard against multi-statement injection attempts
+        if (/;\s*\S/.test(query)) {
+            statusEl.textContent = 'Error: Only single SELECT statements are permitted. Remove the semicolon and anything after it.';
+            statusEl.style.color = '#c00';
+            headEl.innerHTML = '<tr><th>Security Check</th></tr>';
+            bodyEl.innerHTML = '<tr><td style="color:#991b1b;background:#fee2e2;padding:12px;font-size:12px;">⚠️ Multi-statement queries are blocked. Use one SELECT at a time.</td></tr>';
+            return;
+        }
 
         // Auto-translate sequential case number (e.g. case_id = 2) to actual DB caseId (e.g. 30001)
         let queryToSend = query;
@@ -1678,6 +1692,14 @@ if (btnSubmitAccusation) {
                     let confessionSpeech;
                     if (Number(caseId) === 1) {
                         confessionSpeech = `"Alright... alright! Put the cuffs on! I never meant for Sarah to get hurt. She discovered the altered ledger balances and was preparing to report me to the oversight committee on Monday. When I unlocked the office at 21:20 to retrieve the physical ledger, she was still at her desk. She confronted me... a struggle ensued... I struck her, grabbed the ledger, and fled through the stairwell. I'm sorry..."`;
+                    } else if (Number(caseId) === 2) {
+                        confessionSpeech = `"Fine... you have it all, don't you? The badge swipe at 22:30, the red hoodie receipt, the fingerprint on the rack. Jordan stole my promotion — THREE years of work, and they handed it to him like a gift. I went in to wipe the proof of what he had been doing. I didn't plan for it to go that far... I just panicked. You win, Detective."`;
+                    } else if (Number(caseId) === 11) {
+                        confessionSpeech = `"Alright! Yes, it was me. Samira Khan. I was supposed to guard him but Victor's money was too good. I let the crew in through the back, kept the CCTV angle blind. Nobody was supposed to get hurt — it was just a snatch job. The access logs don't lie. I was right there. You've got me cold."`;
+                    } else if (Number(caseId) === 12) {
+                        confessionSpeech = `"You found the receipt. I knew you would eventually. Silverwind was going to be put down anyway — too aggressive, too dangerous. But Whitfield's Pride? She had a real shot. I cut the brake line on the training rig. A scratch, nothing more — but enough to pull Silverwind from the race. The cutting tool receipt sealed it. I had no choice."`;
+                    } else if (Number(caseId) === 13) {
+                        confessionSpeech = `"The scarf on the latch... I should have grabbed it. Three years of watching him parade through that casino like he owned me — he DID own me. The .38 was from the lost and found locker. Nobody checks the back hallway at 22:12. Almost nobody. You're better than I gave you credit for, Detective. I'll cooperate."`;
                     } else if (data.solution && data.solution.explanation) {
                         confessionSpeech = `"Fine, you caught me. I have nothing left to hide. ${data.solution.explanation} Let the records show I am cooperating with authorities."`;
                     } else {

@@ -118,6 +118,10 @@ function init() {
     initBriefingControls();
     initStageTracker();
     initArrestInterrogation();
+    initSchemaDrawer();
+    setupQueryHistoryNav();
+    initWindowTiling();
+    initPrintDossier();
 
     loadCaseContext(caseId);
 }
@@ -640,6 +644,16 @@ function initMusicPlayer() {
         display.textContent = `${state} TRACK 0${curTrack + 1}: ${t.name} [${t.dur}]`;
     }
 
+    const volSlider = document.getElementById('musicVolume');
+    let masterVolume = parseInt(localStorage.getItem('qc_audio_volume') || '40', 10);
+    if (volSlider) {
+        volSlider.value = masterVolume;
+        volSlider.addEventListener('input', () => {
+            masterVolume = parseInt(volSlider.value, 10);
+            localStorage.setItem('qc_audio_volume', String(masterVolume));
+        });
+    }
+
     function playBeep() {
         if (!isPlaying) return;
         try {
@@ -651,8 +665,9 @@ function initMusicPlayer() {
             const gain = audioCtx.createGain();
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(note, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+            const baseGain = (masterVolume / 100) * 0.08;
+            gain.gain.setValueAtTime(baseGain, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
@@ -1711,22 +1726,32 @@ function initArrestInterrogation() {
             }
 
             let response = '';
-            if (sName.includes('Daniel')) {
-                if (topic === 'alibi') response = `"${sName}: I was working late on the quarterly audit on the 7th floor. Anyone who stole the ledger could have grabbed my badge off my desk!"`;
-                else if (topic === 'motive') response = `"${sName}: Look, Sarah and I clashed over ledger accounting discrepancies, but I would never harm her! She was going to file a complaint on Monday..."`;
-                else response = `"${sName}: That $15,000 transaction into my account was an independent advisory consulting fee! It has nothing to do with the stolen ledger!"`;
-            } else if (sName.includes('Rebecca')) {
-                if (topic === 'alibi') response = `"${sName}: I left the building at 8:30 PM sharp. The door logs and parking ticket will verify that."`;
-                else if (topic === 'motive') response = `"${sName}: Sarah and I had contract disputes, but they were in legal mediation. Resorting to physical violence makes zero sense for a lawyer."`;
-                else response = `"${sName}: All payments to my firm are fully invoiced and audited."`;
-            } else if (sName.includes('Michael')) {
-                if (topic === 'alibi') response = `"${sName}: I was in the security surveillance room from 20:45 until the night sweep at 22:00. The camera feeds were my responsibility."`;
-                else if (topic === 'motive') response = `"${sName}: Sarah blamed me for past security lapses, but I wouldn't jeopardize my career over a disagreement."`;
-                else response = `"${sName}: I have no unlogged income or suspicious transfers. My record is spotless."`;
+            if (Number(caseId) === 1) {
+                if (sName.includes('Daniel')) {
+                    if (topic === 'alibi') response = `"${sName}: I was working late on the quarterly audit on the 7th floor. Anyone who stole the ledger could have grabbed my badge off my desk!"`;
+                    else if (topic === 'motive') response = `"${sName}: Look, Sarah and I clashed over ledger accounting discrepancies, but I would never harm her! She was going to file a complaint on Monday..."`;
+                    else response = `"${sName}: That $15,000 transaction into my account was an independent advisory consulting fee! It has nothing to do with the stolen ledger!"`;
+                } else if (sName.includes('Rebecca')) {
+                    if (topic === 'alibi') response = `"${sName}: I left the building at 8:30 PM sharp. The door logs and parking ticket will verify that."`;
+                    else if (topic === 'motive') response = `"${sName}: Sarah and I had contract disputes, but they were in legal mediation. Resorting to physical violence makes zero sense for a lawyer."`;
+                    else response = `"${sName}: All payments to my firm are fully invoiced and audited."`;
+                } else if (sName.includes('Michael')) {
+                    if (topic === 'alibi') response = `"${sName}: I was in the security surveillance room from 20:45 until the night sweep at 22:00. The camera feeds were my responsibility."`;
+                    else if (topic === 'motive') response = `"${sName}: Sarah blamed me for past security lapses, but I wouldn't jeopardize my career over a disagreement."`;
+                    else response = `"${sName}: I have no unlogged income or suspicious transfers. My record is spotless."`;
+                } else {
+                    if (topic === 'alibi') response = `"${sName}: I was dining at the bistro down the street until well after 9:30 PM. The waitstaff saw me."`;
+                    else if (topic === 'motive') response = `"${sName}: Sarah and I had business friction, but killing the partnership ruins my investment."`;
+                    else response = `"${sName}: The funds I received were regular business expense reimbursements."`;
+                }
             } else {
-                if (topic === 'alibi') response = `"${sName}: I was dining at the bistro down the street until well after 9:30 PM. The waitstaff saw me."`;
-                else if (topic === 'motive') response = `"${sName}: Sarah and I had business friction, but killing the partnership ruins my investment."`;
-                else response = `"${sName}: The funds I received were regular business expense reimbursements."`;
+                if (topic === 'alibi') {
+                    response = `"${sName} (${suspect.occupation || 'Suspect'}): As stated in official records: '${suspect.alibi || 'I was elsewhere during the incident.'}' Cross-reference the access logs and camera timeline to verify it."`;
+                } else if (topic === 'motive') {
+                    response = `"${sName}: Rumours claim my motive was '${suspect.motive || 'friction with the victim'}', but having friction does not make someone guilty. You need forensic proof!"`;
+                } else {
+                    response = `"${sName}: My relationship to the victim was '${suspect.relationshipToVictim || 'professional'}'. Ask around — we had normal everyday interactions."`;
+                }
             }
 
             typewriterText(dialogueEl, response, 12);
@@ -1977,3 +2002,171 @@ window.loadCaseContext = loadCaseContext;
 window.initResizableWindows = initResizableWindows;
 window.showCaseDebrief = showCaseDebrief;
 window.updateInvestigationStage = updateInvestigationStage;
+
+
+// =========================================
+// FEATURE WAVE: SCHEMA DRAWER & QUERY HISTORY
+// =========================================
+
+const DB_SCHEMA = {
+    suspects: ['suspect_id', 'name', 'age', 'occupation', 'relationship_to_victim', 'motive', 'alibi', 'case_id'],
+    access_logs: ['log_id', 'suspect_id', 'location', 'access_time', 'exit_time', 'case_id'],
+    evidence: ['evidence_id', 'description', 'location', 'evidence_type', 'date_found', 'case_id'],
+    transactions: ['transaction_id', 'suspect_id', 'amount', 'transaction_date', 'description', 'case_id'],
+    phone_records: ['record_id', 'caller_suspect_id', 'receiver_suspect_id', 'call_time', 'call_duration', 'case_id'],
+    timeline_events: ['event_id', 'event_time', 'description', 'location', 'case_id'],
+    crime_scenes: ['scene_id', 'name', 'location', 'description', 'case_id']
+};
+
+function insertTextAtCursor(el, text) {
+    const start = el.selectionStart || 0;
+    const end = el.selectionEnd || 0;
+    const val = el.value;
+    el.value = val.substring(0, start) + text + val.substring(end);
+    el.selectionStart = el.selectionEnd = start + text.length;
+    el.focus();
+}
+
+function initSchemaDrawer() {
+    const container = document.getElementById('schemaPillsContainer');
+    const tabs = document.querySelectorAll('.schema-tab');
+    const sqlInput = document.getElementById('sqlQuery');
+    if (!container || !sqlInput) return;
+
+    function renderColumns(tableName) {
+        const cols = DB_SCHEMA[tableName] || [];
+        const activeId = caseId || 1;
+        container.innerHTML = `
+            <span style="font-size:10px;font-weight:bold;color:#1e3a8a;margin-right:2px;">${tableName}:</span>
+            ${cols.map(c => `<button type="button" class="schema-pill" data-insert="${c}" title="Insert column">${c}</button>`).join('')}
+            <button type="button" class="schema-template-btn" data-template="SELECT * FROM ${tableName} WHERE case_id = ${activeId};">📋 SELECT * Template</button>
+        `;
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderColumns(tab.dataset.table);
+        });
+    });
+
+    container.addEventListener('click', (e) => {
+        const pill = e.target.closest('.schema-pill');
+        if (pill) {
+            insertTextAtCursor(sqlInput, pill.dataset.insert);
+            return;
+        }
+        const tpl = e.target.closest('.schema-template-btn');
+        if (tpl) {
+            sqlInput.value = tpl.dataset.template;
+            sqlInput.focus();
+        }
+    });
+
+    renderColumns('suspects');
+}
+
+let queryHistoryCursor = -1;
+
+function setupQueryHistoryNav() {
+    const sqlInput = document.getElementById('sqlQuery');
+    if (!sqlInput) return;
+
+    sqlInput.addEventListener('keydown', (e) => {
+        // Quick execute with Ctrl+Enter or Cmd+Enter
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            const btn = document.getElementById('executeQuery');
+            if (btn) btn.click();
+            return;
+        }
+
+        // Query history recall with ArrowUp and ArrowDown
+        const hist = JSON.parse(localStorage.getItem('qc_query_history') || '[]');
+        if (!hist.length) return;
+
+        if (e.key === 'ArrowUp' && (sqlInput.selectionStart === 0 || sqlInput.value.trim() === '')) {
+            if (queryHistoryCursor < hist.length - 1) {
+                e.preventDefault();
+                queryHistoryCursor++;
+                sqlInput.value = hist[queryHistoryCursor];
+            }
+        } else if (e.key === 'ArrowDown' && queryHistoryCursor >= 0) {
+            e.preventDefault();
+            queryHistoryCursor--;
+            if (queryHistoryCursor >= 0) {
+                sqlInput.value = hist[queryHistoryCursor];
+            } else {
+                sqlInput.value = '';
+            }
+        }
+    });
+}
+
+// =========================================
+// FEATURE WAVE: WINDOW TILING & CASCADE
+// =========================================
+
+function cascadeWindows() {
+    const wins = Array.from(document.querySelectorAll('.retro-window:not(.hidden)'));
+    if (!wins.length) return;
+    wins.forEach((w, idx) => {
+        w.style.width = '580px';
+        w.style.height = '430px';
+        w.style.left = Math.min(260, 24 + idx * 32) + 'px';
+        w.style.top = Math.min(200, 24 + idx * 32) + 'px';
+        bringToFront(w);
+    });
+}
+
+function tileWindows() {
+    const mainIds = ['win-search', 'win-suspects', 'win-clues', 'win-arrest'];
+    mainIds.forEach(id => {
+        const w = document.getElementById(id);
+        if (w) w.classList.remove('hidden');
+    });
+    updateTaskbar();
+
+    const d = document.getElementById('desktop');
+    const dw = d ? d.clientWidth : window.innerWidth;
+    const dh = (d ? d.clientHeight : window.innerHeight) - 46;
+
+    const halfW = Math.max(340, Math.floor(dw / 2) - 6);
+    const halfH = Math.max(260, Math.floor(dh / 2) - 6);
+
+    const positions = [
+        { id: 'win-search', left: 4, top: 4, width: halfW, height: halfH },
+        { id: 'win-suspects', left: halfW + 8, top: 4, width: halfW, height: halfH },
+        { id: 'win-clues', left: 4, top: halfH + 8, width: halfW, height: halfH },
+        { id: 'win-arrest', left: halfW + 8, top: halfH + 8, width: halfW, height: halfH }
+    ];
+
+    positions.forEach(p => {
+        const w = document.getElementById(p.id);
+        if (w) {
+            w.style.left = p.left + 'px';
+            w.style.top = p.top + 'px';
+            w.style.width = p.width + 'px';
+            w.style.height = p.height + 'px';
+            bringToFront(w);
+        }
+    });
+}
+
+function initWindowTiling() {
+    const btnCascade = document.getElementById('btnCascadeWindows');
+    const btnTile = document.getElementById('btnTileWindows');
+
+    if (btnCascade) btnCascade.addEventListener('click', cascadeWindows);
+    if (btnTile) btnTile.addEventListener('click', tileWindows);
+}
+
+function initPrintDossier() {
+    const btnPrint = document.getElementById('btnPrintDebrief');
+    if (btnPrint) {
+        btnPrint.addEventListener('click', () => {
+            window.print();
+        });
+    }
+}

@@ -64,3 +64,4 @@ Execute these 9 verification steps once staging services are live:
 ---
 
 *Status Note: Staging configuration and Blueprint templates are prepared in the repository. Staging services must be provisioned in the Render account to mark staging as live.*
+

@@ -1334,3 +1334,156 @@ textarea.sunken-panel, input.sunken-panel, select.sunken-panel {
     to { box-shadow: 0 0 16px rgba(56,189,248,0.7); }
 }
 
+
+/* =========================================
+   FEATURE WAVE: SCHEMA DRAWER & CHEAT SHEET
+   ========================================= */
+
+.schema-drawer {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    margin: 6px 0;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.schema-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.schema-table-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 5px;
+}
+
+.schema-tab {
+    background: #e2e8f0;
+    border: 1px solid #94a3b8;
+    padding: 2px 7px;
+    font-size: 10.5px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: monospace;
+    color: #1e293b;
+    border-radius: 2px;
+}
+
+.schema-tab.active {
+    background: #1e3a8a;
+    color: #ffffff;
+    border-color: #0f172a;
+}
+
+.schema-pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    padding: 5px 6px;
+    border-radius: 2px;
+}
+
+.schema-pill {
+    background: #f8fafc;
+    border: 1px solid #94a3b8;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-family: monospace;
+    color: #0f172a;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.1s, color 0.1s;
+}
+
+.schema-pill:hover {
+    background: #38bdf8;
+    color: #000000;
+    border-color: #0284c7;
+}
+
+.schema-template-btn {
+    background: #fef08a;
+    border: 1px solid #ca8a04;
+    padding: 1px 7px;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 2px;
+    margin-left: auto;
+    color: #713f12;
+}
+
+.schema-template-btn:hover {
+    background: #fde047;
+}
+
+/* =========================================
+   FEATURE WAVE: PRINTABLE SOLVED CERTIFICATE
+   ========================================= */
+
+@media print {
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    #desktop-icons,
+    .desktop-icons,
+    #taskbar,
+    .cop-mascot,
+    .precinct-wakeup-banner,
+    .briefing-overlay,
+    .retro-window:not(#win-debrief),
+    .titlebar-controls,
+    #btnPrintDebrief,
+    button {
+        display: none !important;
+    }
+
+    #win-debrief {
+        position: static !important;
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-shadow: none !important;
+        border: 2px solid #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+    }
+
+    #win-debrief .titlebar {
+        background: #000000 !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    #win-debrief .window-body {
+        max-height: none !important;
+        overflow: visible !important;
+        padding: 20px !important;
+    }
+
+    .stat-box {
+        border: 1px solid #000000 !important;
+        background: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    #debriefBadgeStamp {
+        border: 3px double #000000 !important;
+        background: #fef3c7 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

@@ -418,6 +418,26 @@
                 <textarea class="sunken-panel sql-area" id="sqlQuery" placeholder="Enter query... (e.g. SELECT * FROM suspects WHERE case_id = 1;)"></textarea>
                 <div id="activeCaseSqlHint" style="font-size: 10px; color: #475569; font-weight: bold; margin-top: 2px; font-family: monospace;">Active Case ID: 1</div>
 
+                <!-- QUICK SCHEMA REFERENCE DRAWER -->
+                <div class="schema-drawer" id="schemaDrawer">
+                    <div class="schema-drawer-header">
+                        <span style="font-weight:bold;color:#1e3a8a;">📁 Database Schema Cheat Sheet:</span>
+                        <span style="font-size:10px;color:#64748b;">(Click column pill to insert into query, or template)</span>
+                    </div>
+                    <div class="schema-table-tabs" id="schemaTableTabs">
+                        <button type="button" class="schema-tab active" data-table="suspects">suspects</button>
+                        <button type="button" class="schema-tab" data-table="access_logs">access_logs</button>
+                        <button type="button" class="schema-tab" data-table="evidence">evidence</button>
+                        <button type="button" class="schema-tab" data-table="transactions">transactions</button>
+                        <button type="button" class="schema-tab" data-table="phone_records">phone_records</button>
+                        <button type="button" class="schema-tab" data-table="timeline_events">timeline_events</button>
+                        <button type="button" class="schema-tab" data-table="crime_scenes">crime_scenes</button>
+                    </div>
+                    <div class="schema-pills-container" id="schemaPillsContainer">
+                        <!-- Populated by initSchemaDrawer() -->
+                    </div>
+                </div>
+
                 <div class="query-toolbar">
                     <button class="retro-btn" id="btnViewHistory">View History</button>
                     <label style="font-size: 11px; display: flex; align-items: center; gap: 4px;">
@@ -695,6 +715,9 @@
                     </div>
 
                     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;border-top:1px solid #e2e8f0;padding-top:12px;">
+                        <button type="button" class="retro-btn" id="btnPrintDebrief" style="font-weight:bold;color:#1e3a8a;" title="Print official stamped case report">
+                            🖨️ Print / Save Case Dossier
+                        </button>
                         <button type="button" class="retro-btn" onclick="openWindow('win-manual');document.getElementById('win-debrief').classList.add('hidden');">
                             Select Next Case &rarr;
                         </button>
@@ -927,8 +950,14 @@
             <div class="task-item" data-window="win-debrief" id="taskItemDebrief" style="display:none;background:#dcfce7;color:#166534;">⭐ Debrief</div>
         </div>
 
-        <button class="retro-btn" id="btnFocusMode" style="font-size:11px;font-weight:bold;padding:2px 8px;margin-right:6px;" title="Focus Mode: Dim background and distractions (Shortcut: Alt+F)">
+        <button class="retro-btn" id="btnFocusMode" style="font-size:11px;font-weight:bold;padding:2px 6px;margin-right:3px;" title="Focus Mode: Dim background and distractions (Shortcut: Alt+F)">
             🎯 Focus
+        </button>
+        <button class="retro-btn" id="btnCascadeWindows" style="font-size:11px;font-weight:bold;padding:2px 6px;margin-right:3px;" title="Cascade all open windows">
+            📑 Cascade
+        </button>
+        <button class="retro-btn" id="btnTileWindows" style="font-size:11px;font-weight:bold;padding:2px 6px;margin-right:6px;" title="Tile investigation windows side by side">
+            🪟 Tile
         </button>
 
         <div id="activeCaseLabel" style="font-size: 11px; font-weight: bold; color: #000080; background: #ffffff; border-top: 1px solid #808080; border-left: 1px solid #808080; border-bottom: 1px solid #fff; border-right: 1px solid #fff; padding: 2px 8px; margin-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;">

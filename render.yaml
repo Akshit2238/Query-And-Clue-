@@ -66,3 +66,4 @@ services:
     buildCommand: ""
     staticPublishPath: frontend
     plan: free
+

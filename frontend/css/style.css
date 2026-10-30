@@ -1,5 +1,5 @@
-/* =========================================
-   QUERY & CLUE — RETRO 90S OS DESIGN SYSTEM
+﻿/* =========================================
+   QUERY & CLUE â€” RETRO 90S OS DESIGN SYSTEM
    ========================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
@@ -40,7 +40,7 @@ html, body {
 #desktop {
     position: relative;
     width: 100vw;
-    height: calc(100vh - 36px);
+    height: calc(100vh - 60px);
     background: #008080 url('../assets/windows_xp_bliss.jpg') no-repeat center center / cover;
     overflow: hidden;
 }
@@ -54,7 +54,7 @@ html, body {
     flex-wrap: wrap;
     align-content: flex-start;
     gap: 4px;
-    max-height: calc(100vh - 46px);
+    max-height: calc(100vh - 70px);
     z-index: 10;
 }
 
@@ -131,7 +131,7 @@ html, body {
     top: 0 !important;
     left: 0 !important;
     width: 100vw !important;
-    height: calc(100vh - 36px) !important;
+    height: calc(100vh - 60px) !important;
     max-width: none !important;
     max-height: none !important;
 }
@@ -1314,7 +1314,7 @@ textarea.sunken-panel, input.sunken-panel, select.sunken-panel {
 
 @media (max-width: 768px) {
     #desktop {
-        height: calc(100vh - 44px);
+        height: calc(100vh - 68px);
         overflow-y: auto;
     }
 

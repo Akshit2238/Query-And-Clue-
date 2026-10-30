@@ -443,6 +443,7 @@
                     <label style="font-size: 11px; display: flex; align-items: center; gap: 4px;">
                         <input type="checkbox" id="chkSaveTable"> Save Table
                     </label>
+                    <button type="button" class="retro-btn" id="btnPinToNotepad" title="Pin query results to Detective Notepad" style="font-size: 11px;">📌 Pin to Notes</button>
                     <button class="retro-btn" id="executeQuery" style="font-weight: bold;">Submit</button>
                 </div>
 
@@ -550,7 +551,8 @@
                                 Click on any clue card to inspect forensic details.
                             </div>
                         </div>
-                        <div style="display:flex;justify-content:flex-end;margin-top:2px;">
+                        <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:2px;">
+                            <button type="button" class="retro-btn" id="btnPinEvidenceToNotes" style="font-size:11px;" title="Pin exhibit details to Detective Notepad">📌 Pin to Notes</button>
                             <button class="retro-btn" onclick="document.getElementById('win-evidence-detail').classList.add('hidden');if(typeof updateTaskbar==='function')updateTaskbar();">Close Inspector</button>
                         </div>
                     </div>
@@ -606,10 +608,11 @@
                                 <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;" id="interrogateTargetLabel">INTERROGATING: SUSPECT</div>
                                 <div class="interrogation-dialogue" id="interrogationDialogue">"You've got no right holding me here, Detective. Ask your questions so I can leave."</div>
                                 <div class="interrogation-actions">
-                                    <button type="button" class="btn-interrogate" data-topic="alibi">Confront: Alibi at 21:30</button>
+                                    <button type="button" class="btn-interrogate" data-topic="alibi">Confront: Alibi</button>
                                     <button type="button" class="btn-interrogate" data-topic="motive">Confront: Dispute &amp; Motive</button>
                                     <button type="button" class="btn-interrogate" data-topic="financial">Confront: Access &amp; Money</button>
                                 </div>
+                                <div id="interrogationCrossActions" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;"></div>
                             </div>
                         </div>
 
@@ -718,8 +721,8 @@
                         <button type="button" class="retro-btn" id="btnPrintDebrief" style="font-weight:bold;color:#1e3a8a;" title="Print official stamped case report">
                             🖨️ Print / Save Case Dossier
                         </button>
-                        <button type="button" class="retro-btn" onclick="openWindow('win-manual');document.getElementById('win-debrief').classList.add('hidden');">
-                            Select Next Case &rarr;
+                        <button type="button" class="retro-btn" id="btnNextCaseDebrief" style="font-weight:bold;background:#10b981;color:#fff;border-color:#059669;" title="Advance to next unsolved case file">
+                            Proceed to Next Case &rarr;
                         </button>
                         <button type="button" class="retro-btn" onclick="document.getElementById('win-debrief').classList.add('hidden');">
                             Close Debrief

@@ -122,6 +122,7 @@ function init() {
     setupQueryHistoryNav();
     initWindowTiling();
     initPrintDossier();
+    initNotepadPinning();
 
     loadCaseContext(caseId);
 }
@@ -584,6 +585,7 @@ function initNotepad() {
 
     const loadPage = (p) => {
         activePage = p;
+        window.activeNotepadPage = p;
         notepad.value = localStorage.getItem(`qc_notepad_page_${p}`) || (p === 1 ? (localStorage.getItem('qc_notepad_notes') || '') : '');
         pageButtons.forEach((b, i) => {
             b.style.fontWeight = (i + 1 === p) ? 'bold' : 'normal';
@@ -615,6 +617,20 @@ function initNotepad() {
             notepad.style.color = color === '#475569' ? '#ffffff' : '#000000';
         });
     });
+
+    window.pinToNotepad = function(text) {
+        const p = window.activeNotepadPage || 1;
+        const current = notepad.value.trim();
+        const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const entry = `[${stamp}] ${text}`;
+        const updated = current ? `${current}\n\n📌 ${entry}` : `📌 ${entry}`;
+        notepad.value = updated;
+        localStorage.setItem(`qc_notepad_page_${p}`, updated);
+        if (p === 1) localStorage.setItem('qc_notepad_notes', updated);
+        playSfx('pin');
+        openWindow('win-notepad');
+        notepad.scrollTop = notepad.scrollHeight;
+    };
 }
 
 // Retro 8-bit Synthesizer Audio Player
@@ -1016,8 +1032,10 @@ function openEvidenceViewer(item, isScene) {
     if (dateEl) dateEl.textContent = item.dateFound || (isScene ? 'RECORDED SITE' : 'EVIDENCE LOG');
     if (nameEl) nameEl.textContent = isScene ? (item.name || 'Crime Scene') : (item.evidenceType || 'Forensic Item');
     if (locEl) locEl.textContent = item.location || 'Location Not Specified';
-    if (descEl) descEl.textContent = item.description || 'No additional detective notes recorded on file.';
+    if (descEl) descEl.textContent = cleanMojibake(item.description || 'No additional detective notes recorded on file.');
 
+    window.currentInspectedExhibit = item;
+    playSfx('clue');
     bringToFront(win);
 }
 
@@ -1381,6 +1399,7 @@ if (btnExecute) {
         statusEl.textContent = 'Executing...';
         statusEl.style.color = '#000';
         btnExecute.disabled = true;
+        playSfx('query');
 
         try {
             const res = await apiFetch(`/query/execute`, {
@@ -1440,7 +1459,7 @@ if (btnExecute) {
                 const tr = document.createElement('tr');
                 row.forEach(cell => {
                     const td = document.createElement('td');
-                    td.textContent = cell;
+                    td.textContent = cleanMojibake(cell);
                     tr.appendChild(td);
                 });
                 bodyEl.appendChild(tr);
@@ -1509,6 +1528,12 @@ if (btnSubmitAccusation) {
             }
 
             statusEl.textContent = 'Warrant processed.';
+            if (data.correct) {
+                playSfx('stamp');
+            } else {
+                playSfx('denied');
+                sessionIncorrectAccusations++;
+            }
             resultEl.innerHTML = `
                 <div style="padding:10px;border:2px solid ${data.correct ? '#060' : '#c00'};background:#fff;">
                     <h3 style="margin-top:0;color:${data.correct ? '#060' : '#c00'};">
@@ -1709,6 +1734,27 @@ function initArrestInterrogation() {
         });
     }
 
+    const btnNextDebrief = document.getElementById('btnNextCaseDebrief');
+    if (btnNextDebrief) {
+        btnNextDebrief.addEventListener('click', () => {
+            document.getElementById('win-debrief').classList.add('hidden');
+            if (typeof updateTaskbar === 'function') updateTaskbar();
+
+            if (Array.isArray(cachedCasesList) && cachedCasesList.length > 0) {
+                const currentIdx = cachedCasesList.findIndex(c => Number(c.caseId) === Number(caseId));
+                if (currentIdx >= 0 && currentIdx < cachedCasesList.length - 1) {
+                    const nextCase = cachedCasesList[currentIdx + 1];
+                    loadCaseContext(nextCase.caseId);
+                    const modal = document.getElementById('modal-briefing');
+                    if (modal) modal.classList.remove('hidden');
+                    playSfx('clue');
+                    return;
+                }
+            }
+            openWindow('win-manual');
+        });
+    }
+
     document.querySelectorAll('.btn-interrogate').forEach(btn => {
         btn.addEventListener('click', () => {
             const topic = btn.getAttribute('data-topic');
@@ -1799,6 +1845,36 @@ function renderArrestSuspectPicker(suspects) {
 
             if (currentInvestigationStage < 3) {
                 updateInvestigationStage(3);
+            }
+
+            const crossActions = document.getElementById('interrogationCrossActions');
+            if (crossActions) {
+                crossActions.innerHTML = `
+                    <button type="button" class="retro-btn btn-cross-alibi" style="font-size:10px;padding:2px 8px;" title="Query access_logs for this suspect">🔍 Badge Logs</button>
+                    <button type="button" class="retro-btn btn-cross-money" style="font-size:10px;padding:2px 8px;" title="Query transactions for this suspect">💳 Financials</button>
+                    <button type="button" class="retro-btn btn-pin-interrogate" style="font-size:10px;padding:2px 8px;" title="Pin dialogue to Notepad">📌 Pin Statement</button>
+                `;
+
+                crossActions.querySelector('.btn-cross-alibi').onclick = () => {
+                    const sql = `SELECT * FROM access_logs WHERE suspect_id = ${s.suspectId} AND case_id = ${caseId};`;
+                    const input = document.getElementById('sqlQuery');
+                    if (input) input.value = sql;
+                    bringToFront('win-search');
+                    playSfx('query');
+                };
+
+                crossActions.querySelector('.btn-cross-money').onclick = () => {
+                    const sql = `SELECT * FROM transactions WHERE suspect_id = ${s.suspectId} AND case_id = ${caseId};`;
+                    const input = document.getElementById('sqlQuery');
+                    if (input) input.value = sql;
+                    bringToFront('win-search');
+                    playSfx('query');
+                };
+
+                crossActions.querySelector('.btn-pin-interrogate').onclick = () => {
+                    const text = dialogue ? dialogue.textContent : '';
+                    if (text) window.pinToNotepad(`[Interrogation: ${s.name}]: ${text}`);
+                };
             }
         });
 
@@ -1986,8 +2062,122 @@ function updateInvestigationStage(stage) {
 // UTILITY
 // =========================================
 
+
+// =========================================
+// MOJIBAKE CLEANER & RETRO AUDIO SYNTHESIS
+// =========================================
+
+function cleanMojibake(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/[�?]{2,}/g, ' - ')
+        .replace(/\?\?/g, ' - ')
+        .replace(/â€™/g, "'")
+        .replace(/â€œ/g, '"')
+        .replace(/â€/g, '"')
+        .replace(/â€”/g, '—')
+        .replace(/â€“/g, '–')
+        .replace(/\u0092/g, "'")
+        .replace(/blood\s*-\s*stained/gi, 'blood-stained')
+        .replace(/high\s*-\s*end/gi, 'high-end')
+        .replace(/cover\s*-\s*up/gi, 'cover-up');
+}
+
+let sfxAudioCtx = null;
+function playSfx(type) {
+    const volStr = localStorage.getItem('qc_audio_volume');
+    const masterVol = volStr !== null ? parseFloat(volStr) / 100 : 0.4;
+    if (masterVol <= 0) return;
+
+    try {
+        if (!sfxAudioCtx) {
+            sfxAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (sfxAudioCtx.state === 'suspended') {
+            sfxAudioCtx.resume();
+        }
+
+        const now = sfxAudioCtx.currentTime;
+        const gainNode = sfxAudioCtx.createGain();
+        gainNode.gain.setValueAtTime(masterVol * 0.25, now);
+        gainNode.connect(sfxAudioCtx.destination);
+
+        if (type === 'query') {
+            const osc = sfxAudioCtx.createOscillator();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(750, now);
+            osc.frequency.exponentialRampToValueAtTime(1400, now + 0.07);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+            osc.connect(gainNode);
+            osc.start(now);
+            osc.stop(now + 0.09);
+        } else if (type === 'pin') {
+            const osc = sfxAudioCtx.createOscillator();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(1050, now);
+            osc.frequency.setValueAtTime(650, now + 0.04);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+            osc.connect(gainNode);
+            osc.start(now);
+            osc.stop(now + 0.07);
+        } else if (type === 'clue') {
+            [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                const osc = sfxAudioCtx.createOscillator();
+                const noteGain = sfxAudioCtx.createGain();
+                const noteStart = now + idx * 0.05;
+                noteGain.gain.setValueAtTime(masterVol * 0.2, noteStart);
+                noteGain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.16);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, noteStart);
+                osc.connect(noteGain);
+                noteGain.connect(sfxAudioCtx.destination);
+                osc.start(noteStart);
+                osc.stop(noteStart + 0.16);
+            });
+        } else if (type === 'stamp') {
+            const osc = sfxAudioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(130, now);
+            osc.frequency.exponentialRampToValueAtTime(32, now + 0.22);
+            gainNode.gain.setValueAtTime(masterVol * 0.6, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            osc.connect(gainNode);
+            osc.start(now);
+            osc.stop(now + 0.25);
+
+            const bell = sfxAudioCtx.createOscillator();
+            const bellGain = sfxAudioCtx.createGain();
+            bell.type = 'sine';
+            bell.frequency.setValueAtTime(1046.5, now + 0.08);
+            bellGain.gain.setValueAtTime(masterVol * 0.35, now + 0.08);
+            bellGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+            bell.connect(bellGain);
+            bellGain.connect(sfxAudioCtx.destination);
+            bell.start(now + 0.08);
+            bell.stop(now + 0.55);
+        } else if (type === 'denied') {
+            [0, 0.12].forEach(offset => {
+                const osc = sfxAudioCtx.createOscillator();
+                const buzzGain = sfxAudioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(130, now + offset);
+                buzzGain.gain.setValueAtTime(masterVol * 0.35, now + offset);
+                buzzGain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.09);
+                osc.connect(buzzGain);
+                buzzGain.connect(sfxAudioCtx.destination);
+                osc.start(now + offset);
+                osc.stop(now + offset + 0.09);
+            });
+        }
+    } catch (e) {}
+}
+
 function esc(str) {
-    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return cleanMojibake(String(str ?? ''))
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 function setTableState(tbody, cols, msg) {
@@ -2167,6 +2357,57 @@ function initPrintDossier() {
     if (btnPrint) {
         btnPrint.addEventListener('click', () => {
             window.print();
+        });
+    }
+}
+
+// Quick Pinning to Detective Notepad from SQL, Exhibits, & Interrogations
+function initNotepadPinning() {
+    const btnPinTable = document.getElementById('btnPinToNotepad');
+    if (btnPinTable) {
+        btnPinTable.addEventListener('click', () => {
+            const sqlInput = document.getElementById('sqlQuery');
+            const query = (sqlInput ? sqlInput.value.trim() : '') || 'SELECT Query';
+            const table = document.getElementById('resultsTable');
+            if (!table) return;
+
+            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+            const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr => {
+                return Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim()).join(' | ');
+            });
+
+            if (!rows.length || (rows.length === 1 && rows[0].includes('Enter a SELECT query'))) {
+                window.pinToNotepad(`[Query: ${query}] No result rows returned.`);
+                return;
+            }
+
+            const previewRows = rows.slice(0, 8).map(r => `  • ${r}`).join('\n');
+            const summary = `[Query: ${query}]\nColumns: ${headers.join(', ')}\nRows (${rows.length}):\n${previewRows}`;
+            window.pinToNotepad(summary);
+        });
+    }
+
+    const btnPinEvidence = document.getElementById('btnPinEvidenceToNotes');
+    if (btnPinEvidence) {
+        btnPinEvidence.addEventListener('click', () => {
+            const item = window.currentInspectedExhibit;
+            if (!item) return;
+            const isScene = !item.evidenceId;
+            const note = isScene 
+                ? `[Crime Scene: ${item.name || 'Site'} (${item.location || 'Location'})] ${item.description || ''}`
+                : `[Exhibit #${item.evidenceId || '1'}: ${item.evidenceType || 'Clue'} (${item.location || 'Found on scene'})] ${item.description || ''}`;
+            window.pinToNotepad(note);
+        });
+    }
+
+    const resultsBody = document.getElementById('resultsBody');
+    if (resultsBody) {
+        resultsBody.addEventListener('dblclick', (e) => {
+            const tr = e.target.closest('tr');
+            if (!tr) return;
+            const cells = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim());
+            if (!cells.length) return;
+            window.pinToNotepad(`[Record Pin]: ${cells.join(' | ')}`);
         });
     }
 }

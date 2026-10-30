@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Lightweight health endpoint.
  *
- * GET /health        — application liveness (no DB check)
- * GET /health/db     — database readiness (executes SELECT 1)
+ * GET /health, /api/health        — application liveness (no DB check)
+ * GET /health/db, /api/health/db  — database readiness (executes SELECT 1)
  *
  * Never exposes credentials, stack traces, or internal hostnames.
  */
@@ -27,7 +27,7 @@ public class HealthController {
         this.dataSource = dataSource;
     }
 
-    @GetMapping("/health")
+    @GetMapping({"/health", "/api/health"})
     public ResponseEntity<Map<String, String>> liveness() {
         Map<String, String> body = new LinkedHashMap<>();
         body.put("status", "UP");
@@ -35,7 +35,7 @@ public class HealthController {
         return ResponseEntity.ok(body);
     }
 
-    @GetMapping("/health/db")
+    @GetMapping({"/health/db", "/api/health/db"})
     public ResponseEntity<Map<String, String>> dbReadiness() {
         Map<String, String> body = new LinkedHashMap<>();
         try (var conn = dataSource.getConnection();

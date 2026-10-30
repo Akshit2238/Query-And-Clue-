@@ -1,0 +1,68 @@
+services:
+  # =========================================================================
+  # PRODUCTION SERVICES
+  # =========================================================================
+  - type: web
+    name: query-and-clue-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_READONLY_URL
+        sync: false
+      - key: DB_READONLY_USER
+        sync: false
+      - key: DB_READONLY_PASSWORD
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+
+  - type: static
+    name: query-and-clue-frontend
+    buildCommand: ""
+    staticPublishPath: frontend
+    plan: free
+
+  # =========================================================================
+  # STAGING SERVICES (Isolated Environment)
+  # =========================================================================
+  - type: web
+    name: query-and-clue-staging-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: staging
+      - key: STAGING_DB_URL
+        sync: false
+      - key: STAGING_DB_USER
+        sync: false
+      - key: STAGING_DB_PASSWORD
+        sync: false
+      - key: STAGING_DB_READONLY_URL
+        sync: false
+      - key: STAGING_DB_READONLY_USER
+        sync: false
+      - key: STAGING_DB_READONLY_PASSWORD
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+
+  - type: static
+    name: query-and-clue-staging-frontend
+    buildCommand: ""
+    staticPublishPath: frontend
+    plan: free

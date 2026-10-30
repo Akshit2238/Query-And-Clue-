@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -96,6 +98,28 @@ public class AdminController {
         }
 
         return ResponseEntity.ok(caseRepository.findAll());
+    }
+
+    /** Update case metadata (e.g. title/crimeType fix) */
+    @PutMapping("/case/{id}")
+    public ResponseEntity<?> updateCase(
+            @PathVariable int id,
+            @RequestBody Map<String, String> updates,
+            @RequestHeader(value = "X-Admin-Key", required = false) String key) {
+
+        if (!isAdmin(key)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Unauthorized"));
+        }
+
+        return caseRepository.findById(id).map(c -> {
+            if (updates.containsKey("title")) c.setTitle(updates.get("title"));
+            if (updates.containsKey("crimeType")) c.setCrimeType(updates.get("crimeType"));
+            if (updates.containsKey("description")) c.setDescription(updates.get("description"));
+            if (updates.containsKey("difficulty")) c.setDifficulty(updates.get("difficulty"));
+            Case saved = caseRepository.save(c);
+            return ResponseEntity.ok(saved);
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     /** Get solution + culprit name + hint queries for a case */

@@ -30,6 +30,17 @@ class AccusationControllerIntegrationTest {
     }
 
     @Test
+    void submitIncorrectAccusationHidesSolution() throws Exception {
+        mockMvc.perform(post("/api/cases/1/accusation")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"accusedSuspectId\":2,\"motive\":\"Wrong motive\",\"explanation\":\"Wrong explanation\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.correct").value(false))
+                .andExpect(jsonPath("$.feedback").isNotEmpty())
+                .andExpect(jsonPath("$.solution").doesNotExist());
+    }
+
+    @Test
     void submitAccusationMissingSuspect() throws Exception {
         mockMvc.perform(post("/api/cases/1/accusation")
                 .contentType(MediaType.APPLICATION_JSON)

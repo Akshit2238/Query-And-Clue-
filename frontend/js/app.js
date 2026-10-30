@@ -90,6 +90,8 @@ async function apiFetch(endpoint, options = {}, retries = 2) {
 let caseId = parseInt(localStorage.getItem('qc_active_case') || '1', 10);
 let cachedCasesList = [];
 let sessionQueriesCount = 0;
+let sessionStartTime = Date.now();
+let sessionIncorrectAccusations = 0;
 let currentInvestigationStage = 1;
 if (!window.highestZ) window.highestZ = 100;
 
@@ -799,6 +801,8 @@ async function loadCaseContext(id) {
     }
 
     sessionQueriesCount = 0;
+    sessionStartTime = Date.now();
+    sessionIncorrectAccusations = 0;
     updateInvestigationStage(1);
 
     if (caseData) {
@@ -817,7 +821,17 @@ async function loadCaseContext(id) {
         if (bType) bType.textContent = `TYPE: ${crimeType}`;
         if (bDate) bDate.textContent = `DATE: ${caseData.crimeDate || '2026-09-10'}`;
         if (bNarrative && caseData.description) bNarrative.textContent = caseData.description;
-        if (wForm) wForm.textContent = `FORM MC-${caseId}-W841 - OFFICIAL APPREHENSION ORDER`;
+        if (wForm) {
+            wForm.textContent = `FORM MC-${caseId}-W841 - OFFICIAL APPREHENSION ORDER`;
+            apiFetch(`/cases/${caseId}/warrant`)
+                .then(r => r.ok ? r.json() : null)
+                .then(w => {
+                    if (w && w.formId && wForm) {
+                        wForm.textContent = w.formId;
+                    }
+                })
+                .catch(() => {});
+        }
         if (wTitle) {
             wTitle.innerHTML = `
                 Los Zorangeles Police Department<br>
@@ -1505,7 +1519,14 @@ if (btnSubmitAccusation) {
                 const confessionText = document.getElementById('confessionText');
                 if (confessionBox && confessionText) {
                     confessionBox.style.display = 'block';
-                    const confessionSpeech = `"Alright... alright! Put the cuffs on! I never meant for Sarah to get hurt. She discovered the altered ledger balances and was preparing to report me to the oversight committee on Monday. When I unlocked the office at 21:20 to retrieve the physical ledger, she was still at her desk. She confronted me... a struggle ensued... I struck her, grabbed the ledger, and fled through the stairwell. I'm sorry..."`;
+                    let confessionSpeech;
+                    if (Number(caseId) === 1) {
+                        confessionSpeech = `"Alright... alright! Put the cuffs on! I never meant for Sarah to get hurt. She discovered the altered ledger balances and was preparing to report me to the oversight committee on Monday. When I unlocked the office at 21:20 to retrieve the physical ledger, she was still at her desk. She confronted me... a struggle ensued... I struck her, grabbed the ledger, and fled through the stairwell. I'm sorry..."`;
+                    } else if (data.solution && data.solution.explanation) {
+                        confessionSpeech = `"Fine, you caught me. I have nothing left to hide. ${data.solution.explanation} Let the records show I am cooperating with authorities."`;
+                    } else {
+                        confessionSpeech = `"You got me, Detective. The forensic evidence is indisputable. I submit to apprehension."`;
+                    }
                     typewriterText(confessionText, confessionSpeech);
                 }
 
@@ -1513,10 +1534,12 @@ if (btnSubmitAccusation) {
                 updateInvestigationStage(3);
 
                 // Save persistent progress and show debrief
-                saveCaseCompleted(caseId, data, sessionQueriesCount);
+                saveCaseCompleted(caseId, data, sessionQueriesCount, sessionIncorrectAccusations);
 
                 const taskDebrief = document.getElementById('taskItemDebrief');
                 if (taskDebrief) taskDebrief.style.display = 'flex';
+            } else {
+                sessionIncorrectAccusations++;
             }
         } catch (e) {
             statusEl.textContent = `Network Error: ${e.message}`;
@@ -1796,17 +1819,18 @@ function renderArrestEvidenceChips(evidence) {
 // PHASE 4: POST-CASE DEBRIEF & PERSISTENCE
 // =========================================
 
-function saveCaseCompleted(cId, data, queryCount) {
+function saveCaseCompleted(cId, data, queryCount, incorrectCount) {
     window.lastSolvedData = data;
     try {
-        let rank = 'Master Detective (S)';
-        if (queryCount > 8) rank = 'Senior Detective (A)';
-        if (queryCount > 14) rank = 'Field Investigator (B)';
+        let rank = 'S';
+        if ((incorrectCount || 0) > 0 || queryCount > 6) rank = 'A';
+        if ((incorrectCount || 0) > 1 || queryCount > 12) rank = 'B';
 
         const record = {
             caseId: cId,
             rank: rank,
             queriesCount: queryCount,
+            incorrectAccusations: incorrectCount || 0,
             completedAt: new Date().toISOString()
         };
         localStorage.setItem('qc_case_completed_' + cId, JSON.stringify(record));
@@ -1827,14 +1851,25 @@ function showCaseDebrief(data, queryCount) {
     const badgeStamp = document.getElementById('debriefBadgeStamp');
     const timelineList = document.getElementById('debriefTimelineList');
     const chainEl = document.getElementById('debriefEvidenceChain');
+    const timeEl = document.getElementById('statTimeElapsed');
+    const attemptsEl = document.getElementById('statIncorrectAttempts');
 
     if (queriesEl) queriesEl.textContent = String(queryCount || 1);
 
+    const elapsedMinutes = Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000));
+    if (timeEl) timeEl.textContent = `${elapsedMinutes}m`;
+    if (attemptsEl) attemptsEl.textContent = String(sessionIncorrectAccusations);
+
     let rank = 'S';
     let title = '⭐ MASTER DETECTIVE';
-    if (queryCount > 4) { rank = 'A'; title = '🎖️ SENIOR DETECTIVE'; }
-    if (queryCount > 8) { rank = 'B'; title = '🔍 INVESTIGATOR'; }
-    if (queryCount > 14) { rank = 'C'; title = '📋 ROOKIE OFFICER'; }
+    if (sessionIncorrectAccusations > 0 || queryCount > 6) {
+        rank = 'A';
+        title = '🎖️ SENIOR DETECTIVE';
+    }
+    if (sessionIncorrectAccusations > 1 || queryCount > 12) {
+        rank = 'B';
+        title = '🔍 INVESTIGATOR';
+    }
 
     if (rankEl) rankEl.textContent = rank;
     if (badgeStamp) badgeStamp.textContent = title;

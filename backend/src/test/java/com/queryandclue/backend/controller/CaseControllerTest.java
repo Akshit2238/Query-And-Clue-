@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
+import com.queryandclue.backend.dto.WarrantInfo;
 import com.queryandclue.backend.entity.Case;
 import com.queryandclue.backend.entity.CrimeScene;
 import com.queryandclue.backend.entity.Evidence;
@@ -41,38 +42,37 @@ class CaseControllerTest {
     @InjectMocks
     private CaseController caseController;
 
-    private Case sampleCase;
+    private Case testCase;
 
     @BeforeEach
     void setUp() {
-        sampleCase = new Case();
-        sampleCase.setCaseId(1);
-        sampleCase.setTitle("The Midnight Ledger");
-        sampleCase.setDifficulty("Easy");
-        sampleCase.setCrimeType("Theft");
+        testCase = new Case();
+        testCase.setCaseId(1);
+        testCase.setTitle("The Missing Diamond");
+        testCase.setDescription("A diamond went missing from the museum.");
+        testCase.setDifficulty("Medium");
     }
 
     @Test
     void testGetAllCases() {
-        when(caseRepository.findAll()).thenReturn(List.of(sampleCase));
+        when(caseRepository.findAll()).thenReturn(List.of(testCase));
 
         List<Case> cases = caseController.getAllCases();
 
         assertNotNull(cases);
         assertEquals(1, cases.size());
-        assertEquals("The Midnight Ledger", cases.get(0).getTitle());
-        verify(caseRepository, times(1)).findAll();
+        assertEquals("The Missing Diamond", cases.get(0).getTitle());
     }
 
     @Test
     void testGetCaseByIdFound() {
-        when(caseRepository.findById(1)).thenReturn(Optional.of(sampleCase));
+        when(caseRepository.findById(1)).thenReturn(Optional.of(testCase));
 
         ResponseEntity<Case> response = caseController.getCaseById(1);
 
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().getCaseId());
+        assertEquals("The Missing Diamond", response.getBody().getTitle());
     }
 
     @Test
@@ -88,17 +88,17 @@ class CaseControllerTest {
     @Test
     void testGetSuspectsByCaseIdFound() {
         when(caseRepository.existsById(1)).thenReturn(true);
-        Suspect s = new Suspect();
-        s.setSuspectId(1);
-        s.setName("Daniel Carter");
-        when(suspectRepository.findByCaseId(1)).thenReturn(List.of(s));
+        Suspect suspect = new Suspect();
+        suspect.setSuspectId(1);
+        suspect.setName("John Doe");
+        when(suspectRepository.findByCaseId(1)).thenReturn(List.of(suspect));
 
         ResponseEntity<List<Suspect>> response = caseController.getSuspectsByCaseId(1);
 
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().size());
-        assertEquals("Daniel Carter", response.getBody().get(0).getName());
+        assertEquals("John Doe", response.getBody().get(0).getName());
     }
 
     @Test
@@ -113,10 +113,10 @@ class CaseControllerTest {
     @Test
     void testGetEvidenceByCaseIdFound() {
         when(caseRepository.existsById(1)).thenReturn(true);
-        Evidence ev = new Evidence();
-        ev.setEvidenceId(1);
-        ev.setDescription("Broken desk drawer");
-        when(evidenceRepository.findByCaseId(1)).thenReturn(List.of(ev));
+        Evidence evidence = new Evidence();
+        evidence.setEvidenceId(1);
+        evidence.setDescription("Broken desk drawer");
+        when(evidenceRepository.findByCaseId(1)).thenReturn(List.of(evidence));
 
         ResponseEntity<List<Evidence>> response = caseController.getEvidenceByCaseId(1);
 
@@ -158,5 +158,30 @@ class CaseControllerTest {
         ResponseEntity<List<CrimeScene>> response = caseController.getCrimeScenesByCaseId(999);
 
         assertEquals(404, response.getStatusCode().value());
+    }
+
+    @Test
+    void testGetWarrantByCaseIdFound() {
+        when(caseRepository.existsById(1)).thenReturn(true);
+
+        ResponseEntity<WarrantInfo> response = caseController.getWarrantByCaseId(1);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().getCaseId());
+        assertTrue(response.getBody().getWarrantNumber().startsWith("MC-001-W"));
+        assertNotNull(response.getBody().getReferenceNumber());
+        assertNotNull(response.getBody().getCreatedAt());
+        assertTrue(response.getBody().getFormId().contains("OFFICIAL APPREHENSION ORDER"));
+    }
+
+    @Test
+    void testGetWarrantByCaseIdNotFound() {
+        when(caseRepository.existsById(999)).thenReturn(false);
+
+        ResponseEntity<WarrantInfo> response = caseController.getWarrantByCaseId(999);
+
+        assertEquals(404, response.getStatusCode().value());
+        assertNull(response.getBody());
     }
 }

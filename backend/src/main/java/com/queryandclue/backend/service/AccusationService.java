@@ -16,7 +16,6 @@ public class AccusationService {
     public AccusationService(CaseSolutionRepository caseSolutionRepository,
             FinalAccusationRepository finalAccusationRepository) {
         this.caseSolutionRepository = caseSolutionRepository;
-        // finalAccusationRepository omitted until user auth is implemented (avoids FK error)
     }
 
     public AccusationResult submitAccusation(int caseId, AccusationRequest request) {
@@ -25,15 +24,28 @@ public class AccusationService {
 
         boolean correct = request.getAccusedSuspectId() == solution.getCulpritSuspectId();
 
-        String feedback = correct
-                ? "Correct! You identified the culprit. The arrest warrant has been approved."
-                : "Incorrect. The evidence points to a different suspect. Review the clues and try again.";
+        String feedback;
+        AccusationResult.CaseSolution solutionDto;
 
-        AccusationResult.CaseSolution solutionDto = new AccusationResult.CaseSolution(
-                solution.getCulpritSuspectId(),
-                solution.getMotive(),
-                solution.getCrimeMethod(),
-                solution.getExplanation());
+        if (correct) {
+            feedback = "Warrant Approved. Confession secured. " + solution.getExplanation();
+            solutionDto = new AccusationResult.CaseSolution(
+                    solution.getCulpritSuspectId(),
+                    solution.getMotive(),
+                    solution.getCrimeMethod(),
+                    solution.getExplanation());
+        } else {
+            String[] contradictionHints = {
+                "Warrant Denied: Badge swipe records in access_logs contradict this suspect's opportunity during the incident window.",
+                "Warrant Denied: Financial transactions show no motive or illicit monetary transfers linked to this suspect.",
+                "Warrant Denied: Phone records indicate this individual was communicating with outside parties during the incident window.",
+                "Warrant Denied: Physical forensic evidence recovered on scene contradicts this suspect's alleged involvement."
+            };
+            int hintIdx = Math.abs((request.getAccusedSuspectId() * 37 + caseId)) % contradictionHints.length;
+            feedback = contradictionHints[hintIdx];
+            // Do not leak solution on incorrect accusation
+            solutionDto = null;
+        }
 
         return new AccusationResult(correct, feedback, solutionDto);
     }

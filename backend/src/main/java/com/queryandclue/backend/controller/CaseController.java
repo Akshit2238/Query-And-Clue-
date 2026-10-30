@@ -1,5 +1,6 @@
 package com.queryandclue.backend.controller;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.queryandclue.backend.dto.WarrantInfo;
 import com.queryandclue.backend.entity.Case;
 import com.queryandclue.backend.entity.CrimeScene;
 import com.queryandclue.backend.entity.Evidence;
@@ -71,5 +73,18 @@ public class CaseController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(crimeSceneRepository.findByCaseId(id));
+    }
+
+    @GetMapping("/{id}/warrant")
+    public ResponseEntity<WarrantInfo> getWarrantByCaseId(@PathVariable int id) {
+        if (!caseRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        long epoch = System.currentTimeMillis();
+        int refCode = (int) (Math.abs((id * 31337L) ^ (epoch % 899999L)) + 100000);
+        String refStr = String.format("%06d", refCode);
+        String warrantNo = String.format("MC-%03d-W%s", id, refStr);
+        String formId = String.format("FORM %s - OFFICIAL APPREHENSION ORDER", warrantNo);
+        return ResponseEntity.ok(new WarrantInfo(id, warrantNo, refStr, Instant.now(), formId));
     }
 }

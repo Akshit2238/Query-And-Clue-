@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Query and Clue — Minor Crimes OS</title>
-    <link rel="stylesheet" href="css/style.css?v=7.0">
+    <link rel="stylesheet" href="css/style.css?v=7.5">
     <script>
         // Route new sessions to Welcome / Chapter Select screen first
         if (!sessionStorage.getItem('qc_entered') && !window.location.search.includes('desktop')) {
@@ -32,12 +32,19 @@
         <span class="stage-indicator active" id="stage1Ind">1. Crime Scene</span>
         <span class="stage-indicator" id="stage2Ind">2. Data Forensics</span>
         <span class="stage-indicator" id="stage3Ind">3. Apprehend Culprit</span>
+        <div id="liveObjPills" style="display:flex;gap:4px;margin-left:6px;">
+            <span class="obj-pill" id="pillObj1" title="Objective 1: Inspect Evidence">🔍 Clues</span>
+            <span class="obj-pill" id="pillObj2" title="Objective 2: Run SQL Query">⚡ SQL</span>
+            <span class="obj-pill" id="pillObj3" title="Objective 3: Verify Alibis & Interrogate">⚖️ Alibi</span>
+            <span class="obj-pill" id="pillObj4" title="Objective 4: File Warrant">📜 Warrant</span>
+        </div>
         <div class="experienced-toggle">
             <label style="cursor:pointer;display:flex;align-items:center;gap:4px;">
                 <input type="checkbox" id="chkExperiencedMode">
                 <span>Experienced Mode</span>
             </label>
             <button class="retro-btn" id="btnReplayBriefing" style="padding:1px 6px;font-size:10px;margin-left:6px;" title="Re-read Case Dossier">Dossier</button>
+            <button class="retro-btn" id="btnOpenHints" style="padding:1px 6px;font-size:10px;margin-left:4px;background:#fef3c7;border-color:#f59e0b;color:#92400e;font-weight:bold;" title="Open Forensic Advisory & Hints" onclick="openWindow('win-hints')">💡 Hints</button>
         </div>
         <button id="stageCollapseBtn" title="Collapse status bar">&#9650;</button>
     </div>
@@ -103,11 +110,11 @@
 
                     <div class="briefing-tasks">
                         <h4>Mandatory Investigative Objectives:</h4>
-                        <ul>
-                            <li><strong>Query Access Logs:</strong> Determine who accessed Floor 7 and the Executive Office between 20:30 and 21:40.</li>
-                            <li><strong>Inspect Evidence:</strong> Cross-reference fingerprints, security cards, and discarded items recovered on scene.</li>
-                            <li><strong>Verify Alibis:</strong> Interrogate suspects with contradictory phone and transaction histories.</li>
-                            <li><strong>Execute Warrant:</strong> Identify the guilty suspect and substantiate the motive and method beyond reasonable doubt.</li>
+                        <ul style="list-style:none;padding-left:0;margin:6px 0;">
+                            <li id="objBriefing1" style="margin-bottom:6px;"><span class="obj-check">⬜</span> <strong>Inspect Evidence:</strong> Cross-reference fingerprints, security cards, and discarded items recovered on scene.</li>
+                            <li id="objBriefing2" style="margin-bottom:6px;"><span class="obj-check">⬜</span> <strong>Query Access Logs:</strong> Filter access logs, phone records, or transactions for the incident window.</li>
+                            <li id="objBriefing3" style="margin-bottom:6px;"><span class="obj-check">⬜</span> <strong>Verify Alibis:</strong> Interrogate suspects and confront them with linked evidence to expose discrepancies.</li>
+                            <li id="objBriefing4" style="margin-bottom:6px;"><span class="obj-check">⬜</span> <strong>Execute Warrant:</strong> Identify the guilty suspect and substantiate the motive and method beyond reasonable doubt.</li>
                         </ul>
                     </div>
 
@@ -216,7 +223,8 @@
                 <span>notepad</span>
             </button>
 
-            <button class="icon-btn" id="btn-icon-messages" data-window="win-messages" onclick="openWindow('win-messages')">
+            <button class="icon-btn" id="btn-icon-messages" data-window="win-messages" onclick="openWindow('win-messages')" style="position:relative;">
+                <span id="msgUnreadBadge" class="msg-unread-badge" style="display:none;">1</span>
                 <svg class="icon-svg" viewBox="0 0 36 36">
                     <rect x="4" y="9" width="28" height="19" rx="2" fill="#ffffff" stroke="#000" stroke-width="1.8"/>
                     <path d="M4 10 L18 20 L32 10" fill="none" stroke="#000" stroke-width="1.8"/>
@@ -647,6 +655,21 @@
                                     <button type="button" class="btn-interrogate" data-topic="financial">Confront: Access &amp; Money</button>
                                 </div>
                                 <div id="interrogationCrossActions" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;"></div>
+                                
+                                <div style="margin-top:10px;padding:8px;background:#e2e8f0;border:1px solid #94a3b8;border-radius:2px;">
+                                    <label style="font-weight:bold;font-size:11px;color:#1e3a8a;display:block;margin-bottom:4px;">
+                                        ⚖️ Confront Suspect with Discovered Evidence:
+                                    </label>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <select id="interrogateEvidenceSelect" class="sunken-panel" style="flex:1;font-size:11px;padding:3px;">
+                                            <option value="">-- Choose Exhibit to Present --</option>
+                                        </select>
+                                        <button type="button" class="retro-btn" id="btnConfrontEvidence" style="font-size:11px;font-weight:bold;padding:3px 10px;">
+                                            Present Exhibit
+                                        </button>
+                                    </div>
+                                    <div id="confrontationFeedback" style="display:none;margin-top:6px;padding:6px;font-size:11px;border-left:3px solid #dc2626;background:#fff;"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -728,6 +751,10 @@
                         <div class="stat-box">
                             <div class="stat-box-num" id="statIncorrectAttempts">0</div>
                             <div class="stat-box-label">Denied Warrants</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-box-num" id="statHintsUsed">0</div>
+                            <div class="stat-box-label">Hints Used</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-box-num" id="statEfficiencyRank">S</div>
@@ -900,7 +927,59 @@
             </div>
         </div>
 
-        <!-- WINDOW 8: MESSAGES -->
+        
+        <!-- WINDOW: FORENSIC ADVISORY & HINTS -->
+        <div class="retro-window hidden" id="win-hints" style="width: 480px; max-width: 92vw; top: 60px; left: 160px;">
+            <div class="titlebar" style="background: linear-gradient(90deg, #d97706, #b45309);">
+                <div class="titlebar-text">
+                    <span>💡 Forensic Advisory &amp; Detective Hints</span>
+                </div>
+                <div class="titlebar-controls">
+                    <button class="win-btn btn-min">_</button>
+                    <button class="win-btn btn-close" data-target="win-hints">X</button>
+                </div>
+            </div>
+            <div class="window-body" style="padding: 10px; background: #c0c0c0;">
+                <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 6px 10px; font-size: 11px; color: #92400e; margin-bottom: 8px;">
+                    ⚠️ <strong>Advisory:</strong> Requesting investigative leads deducts points from your final evaluation rank.
+                </div>
+
+                <div class="hint-level-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong>Level 1: Nudge</strong>
+                            <div style="font-size:10px;color:#64748b;">Narrows suspicious timeline and target tables</div>
+                        </div>
+                        <button type="button" class="retro-btn" id="btnUnlockHint1" style="font-size:10px;padding:3px 8px;">Reveal (-1 Pt)</button>
+                    </div>
+                    <div class="hint-content" id="hintContent1">Scanning police database index...</div>
+                </div>
+
+                <div class="hint-level-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong>Level 2: Forensic Clue</strong>
+                            <div style="font-size:10px;color:#64748b;">Specific SQL filter pattern & cross-reference</div>
+                        </div>
+                        <button type="button" class="retro-btn" id="btnUnlockHint2" style="font-size:10px;padding:3px 8px;">Reveal (-2 Pts)</button>
+                    </div>
+                    <div class="hint-content" id="hintContent2">Analyzing access logs and transaction anomalies...</div>
+                </div>
+
+                <div class="hint-level-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong>Level 3: Critical Contradiction</strong>
+                            <div style="font-size:10px;color:#64748b;">Direct contradiction in suspect testimony</div>
+                        </div>
+                        <button type="button" class="retro-btn" id="btnUnlockHint3" style="font-size:10px;padding:3px 8px;color:#991b1b;font-weight:bold;">Reveal (Caps at Rank C)</button>
+                    </div>
+                    <div class="hint-content" id="hintContent3">Exposing forensic contradiction...</div>
+                </div>
+            </div>
+        </div>
+
+<!-- WINDOW 8: MESSAGES -->
         <div class="retro-window hidden" id="win-messages">
             <div class="titlebar">
                 <div class="titlebar-text">
@@ -911,12 +990,23 @@
                     <button class="win-btn btn-close" data-target="win-messages">X</button>
                 </div>
             </div>
-            <div class="window-body">
-                <div class="sunken-panel" style="padding:10px;background:#fff;height:100%;font-size:12px;">
-                    <strong>FROM: Captain Vance</strong><br>
-                    <span style="font-size:10px;color:#555;">Received: Today at 08:30 AM</span>
-                    <hr style="margin:6px 0;">
-                    <p>Detective, work through the physical evidence in the Clues locker and check the suspect alibis carefully before executing any arrest warrant.</p>
+            <div class="window-body" style="padding:6px;background:#c0c0c0;height:320px;display:flex;flex-direction:column;gap:6px;">
+                <div style="background:#1e3a8a;color:#fff;padding:3px 8px;font-size:11px;font-weight:bold;display:flex;justify-content:space-between;">
+                    <span>INBOX &bull; PRECINCT DISPATCH MEMOS</span>
+                    <span id="msgInboxCount">4 Messages</span>
+                </div>
+                <div style="display:flex;gap:6px;flex:1;min-height:0;">
+                    <div class="sunken-panel" id="msgInboxList" style="width:42%;background:#fff;overflow-y:auto;">
+                        <!-- Dynamically filled with inbox items -->
+                    </div>
+                    <div class="sunken-panel" id="msgReaderPane" style="flex:1;background:#fff;padding:10px;overflow-y:auto;font-size:11px;display:flex;flex-direction:column;">
+                        <div style="font-weight:bold;color:#000080;font-size:12px;" id="msgViewSubject">Select a memo from the inbox</div>
+                        <div style="color:#64748b;font-size:10px;margin-bottom:6px;" id="msgViewMeta">FROM: Captain Vance</div>
+                        <hr style="margin:4px 0 8px 0;border:0;border-top:1px solid #cbd5e1;">
+                        <div id="msgViewBody" style="line-height:1.4;color:#0f172a;flex:1;">
+                            Select a dispatch memo from the left pane to review instructions and forensic directives.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1041,8 +1131,8 @@
         <ellipse cx="75" cy="85" rx="8" ry="6" fill="#d97706" stroke="#000" stroke-width="2"/>
     </svg>
 
-    <script src="js/config.js?v=7.0"></script>
-    <script src="js/app.js?v=7.0"></script>
+    <script src="js/config.js?v=7.5"></script>
+    <script src="js/app.js?v=7.5"></script>
     <script>
     (function() {
         if (typeof window.initResizableWindows === 'function') {

@@ -161,6 +161,8 @@ function init() {
     initPrintDossier();
     initNotepadPinning();
     initNotepadExport();
+    if (typeof initHintSystem === 'function') initHintSystem();
+    if (typeof initEvidenceConfrontation === 'function') initEvidenceConfrontation();
 
     loadCaseContext(caseId);
 }
@@ -984,6 +986,12 @@ async function loadCaseContext(id) {
     sessionStartTime = Date.now();
     sessionIncorrectAccusations = 0;
     updateInvestigationStage(1);
+    if (typeof resetObjectivesTracker === 'function') resetObjectivesTracker();
+    if (typeof resetHintSystemUI === 'function') resetHintSystemUI();
+    window.caseWarrantAttemptsRemaining = 3;
+    if (typeof updateWarrantQuotaDisplay === 'function') updateWarrantQuotaDisplay();
+    window.latentEvidenceUnlocked = false;
+    if (typeof initCaptainVanceInbox === 'function') initCaptainVanceInbox();
 
     if (caseData) {
         window.currentCaseData = caseData;
@@ -1161,6 +1169,23 @@ async function loadEvidence(id) {
 
         grid.innerHTML = '';
 
+        // Add latent unlockable evidence card
+        const latentCard = document.createElement('div');
+        latentCard.className = `clue-card ${window.latentEvidenceUnlocked ? 'clue-card-unlocked' : 'clue-card-locked'}`;
+        latentCard.innerHTML = `
+            <div class="clue-tag"><span class="clue-badge" style="background:${window.latentEvidenceUnlocked ? '#dcfce7' : '#e2e8f0'};color:${window.latentEvidenceUnlocked ? '#166534' : '#475569'};">${window.latentEvidenceUnlocked ? 'UNLOCKED EXHIBIT' : '🔒 CLASSIFIED EXHIBIT'}</span></div>
+            <div class="clue-name">Exhibit #E-CL: Latent Security Log</div>
+            <div class="clue-desc">${window.latentEvidenceUnlocked ? 'LATENT ANALYSIS DECRYPTED: Access records prove terminal #4 at 21:20 required a physical bypass code known only to executive staff.' : 'CLASSIFIED FORENSIC EXHIBIT [LOCKED] — Encrypted crime scene terminal log. Decrypts after querying access_logs or interrogating a prime suspect.'}</div>
+        `;
+        latentCard.onclick = () => {
+            if (window.latentEvidenceUnlocked) {
+                showDetectiveToast('🔬 Latent Exhibit #E-CL: Bypassed physical executive terminal at 21:20.');
+            } else {
+                showDetectiveToast('🔒 Exhibit Locked: Query access_logs or interrogate a suspect to decrypt.');
+            }
+        };
+        grid.appendChild(latentCard);
+
         scenes.forEach(s => {
             const card = document.createElement('div');
             card.className = 'clue-card';
@@ -1201,6 +1226,7 @@ async function loadEvidence(id) {
 // Forensic Evidence Viewer Inspector Logic
 function openEvidenceViewer(item, isScene) {
     window.inspectedCluesCount = (window.inspectedCluesCount || 0) + 1;
+    if (typeof completeObjective === 'function') completeObjective(1, 'Inspect Evidence');
     if (typeof updateGatedIcons === 'function') updateGatedIcons();
     const win = document.getElementById('win-evidence-detail');
     if (!win) return;
@@ -1771,6 +1797,9 @@ if (btnExecute) {
             }
 
             sessionQueriesCount++;
+            if (typeof completeObjective === 'function') completeObjective(2, 'Query Police Database');
+            if (typeof checkUnlockLatentEvidence === 'function') checkUnlockLatentEvidence('query');
+            if (typeof dispatchVanceMessage === 'function') dispatchVanceMessage(2);
             if (typeof updateGatedIcons === 'function') updateGatedIcons();
             if (currentInvestigationStage < 2) {
                 updateInvestigationStage(2);
@@ -1861,7 +1890,13 @@ if (btnSubmitAccusation) {
 
         statusEl.textContent = 'Filing warrant...';
         statusEl.style.color = '#000';
+        if (window.caseWarrantAttemptsRemaining <= 0) {
+            statusEl.textContent = 'Warrant quota exceeded. Reset case file first.';
+            statusEl.style.color = '#c00';
+            return;
+        }
         btnSubmitAccusation.disabled = true;
+        if (typeof completeObjective === 'function') completeObjective(4, 'Execute Warrant');
 
         try {
             const res = await apiFetch(`/cases/${caseId}/accusation`, {
@@ -1887,6 +1922,9 @@ if (btnSubmitAccusation) {
             } else {
                 playSfx('denied');
                 sessionIncorrectAccusations++;
+                window.caseWarrantAttemptsRemaining = Math.max(0, (window.caseWarrantAttemptsRemaining || 3) - 1);
+                if (typeof updateWarrantQuotaDisplay === 'function') updateWarrantQuotaDisplay();
+                if (typeof dispatchVanceMessage === 'function') dispatchVanceMessage(4);
             }
             resultEl.innerHTML = `
                 <div style="padding:10px;border:2px solid ${data.correct ? '#060' : '#c00'};background:#fff;">
@@ -1942,6 +1980,9 @@ if (btnSubmitAccusation) {
                 if (taskDebrief) taskDebrief.style.display = 'flex';
             } else {
                 sessionIncorrectAccusations++;
+                window.caseWarrantAttemptsRemaining = Math.max(0, (window.caseWarrantAttemptsRemaining || 3) - 1);
+                if (typeof updateWarrantQuotaDisplay === 'function') updateWarrantQuotaDisplay();
+                if (typeof dispatchVanceMessage === 'function') dispatchVanceMessage(4);
             }
         } catch (e) {
             statusEl.textContent = `Network Error: ${e.message}`;
@@ -2204,6 +2245,8 @@ function renderArrestSuspectPicker(suspects) {
             if (sec) sec.style.display = 'block';
             if (targetLabel) targetLabel.textContent = `INTERROGATING: ${s.name.toUpperCase()} (${s.occupation || 'SUSPECT'})`;
             if (dialogue) dialogue.textContent = `"You have no right holding me here, Detective. Ask your questions so I can leave."`;
+            if (typeof completeObjective === 'function') completeObjective(3, 'Verify Alibis');
+            if (typeof checkUnlockLatentEvidence === 'function') checkUnlockLatentEvidence('interrogation');;
 
             if (currentInvestigationStage < 3) {
                 updateInvestigationStage(3);
@@ -2349,6 +2392,26 @@ function showCaseDebrief(data, queryCount) {
         title = '🎖️ SENIOR DETECTIVE';
         awardedXp = 250;
     }
+
+    const hintsEl = document.getElementById('statHintsUsed');
+    if (hintsEl) hintsEl.textContent = String(window.caseHintsUsed || 0);
+
+    // Hints penalty reduces rank
+    if (window.caseHintsPenalty >= 5) {
+        rank = 'C';
+        title = '📋 PROBATIONARY';
+        awardedXp = 50;
+    } else if (window.caseHintsPenalty >= 2 && rank === 'S') {
+        rank = 'A';
+        title = '🎖️ SENIOR DETECTIVE';
+        awardedXp = Math.min(awardedXp, 250);
+    } else if (window.caseHintsPenalty >= 1 && rank === 'S') {
+        rank = 'A';
+        title = '🎖️ SENIOR DETECTIVE';
+        awardedXp = Math.min(awardedXp, 250);
+    }
+
+    if (typeof renderDebriefRedHerrings === 'function') renderDebriefRedHerrings(caseId);
 
     if (rankEl) rankEl.textContent = rank;
     if (badgeStamp) badgeStamp.textContent = title;
@@ -2866,4 +2929,460 @@ function initNotepadExport() {
             }
         });
     }
+}
+
+
+// =========================================
+// STEP 2: GAMEPLAY & INVESTIGATION ENHANCEMENTS
+// =========================================
+
+// --- 1. OBJECTIVE TRACKER ---
+window.caseObjectives = { 1: false, 2: false, 3: false, 4: false };
+
+function resetObjectivesTracker() {
+    window.caseObjectives = { 1: false, 2: false, 3: false, 4: false };
+    for (let i = 1; i <= 4; i++) {
+        const item = document.getElementById(`objBriefing${i}`);
+        if (item) {
+            item.classList.remove('obj-completed');
+            const check = item.querySelector('.obj-check');
+            if (check) check.textContent = '⬜';
+        }
+        const pill = document.getElementById(`pillObj${i}`);
+        if (pill) pill.classList.remove('done');
+    }
+}
+
+function completeObjective(num, title) {
+    if (window.caseObjectives[num]) return;
+    window.caseObjectives[num] = true;
+
+    const item = document.getElementById(`objBriefing${num}`);
+    if (item) {
+        item.classList.add('obj-completed');
+        const check = item.querySelector('.obj-check');
+        if (check) check.textContent = '✅';
+    }
+
+    const pill = document.getElementById(`pillObj${num}`);
+    if (pill) pill.classList.add('done');
+
+    playSfx('clue');
+    showDetectiveToast(`🎯 OBJECTIVE COMPLETE: ${title}`);
+}
+
+// --- 2. 3-LEVEL HINT SYSTEM ---
+window.caseHintsUsed = 0;
+window.caseHintsPenalty = 0;
+
+const CASE_HINTS = {
+    1: {
+        nudge: "Focus on the access_logs table between 20:30 and 21:40 on Floor 7. Compare who entered with when Sarah was last seen.",
+        clue: "Run: SELECT * FROM access_logs WHERE room = 'Executive Office' ORDER BY access_time; Note whose badge accessed the room without a matching exit before the breach.",
+        nearAnswer: "Daniel Miller claims he was in the audit annex, but access_logs record his keycard opening the Executive Office door at 21:20."
+    },
+    2: {
+        nudge: "Look at access_logs and transactions for anyone active in the building after 22:00 or with unusual late-night hardware purchases.",
+        clue: "Query access_logs for swipes on server rack room B. Cross-reference suspect receipts or transactions.",
+        nearAnswer: "Alex Rivera purchased a red hoodie seen on CCTV and swiped into server rack B at 22:30."
+    },
+    11: {
+        nudge: "Investigate security shifts in access_logs during the syndicate kidnapping window. Who disabled or repositioned cameras?",
+        clue: "Check phone_records between security personnel and external encrypted numbers.",
+        nearAnswer: "Samira Khan was the on-duty security lead who received an outside wire transfer and disabled the rear perimeter gate."
+    },
+    12: {
+        nudge: "Inspect physical evidence at the stable and look for recent cutting tool purchases in the transactions table.",
+        clue: "Cross-reference who had access to the training rig and who recently purchased industrial cable shears.",
+        nearAnswer: "Jasper Whitfield purchased the cutting tool found near the rig and had sole access to Silverwind's paddock."
+    },
+    13: {
+        nudge: "Check casino back hallway surveillance access and missing vault keys in the timeline_events table.",
+        clue: "Look for discarded accessories or uniforms logged in the evidence table and link them to suspect wardrobe.",
+        nearAnswer: "Mira Duran left her distinctive silk scarf caught on the vault latch at 22:12."
+    }
+};
+
+function getHintData(currentCaseId) {
+    const id = Number(currentCaseId) || 1;
+    if (CASE_HINTS[id]) return CASE_HINTS[id];
+    return {
+        nudge: `Review access_logs and timeline_events for Case #${id}. Filter by the critical 30-minute crime window.`,
+        clue: `JOIN suspects and access_logs on suspect_id to verify which suspect's physical location contradicts their recorded alibi.`,
+        nearAnswer: `The culprit's keycard or phone records directly contradict their claimed alibi during the incident window.`
+    };
+}
+
+function initHintSystem() {
+    const btn1 = document.getElementById('btnUnlockHint1');
+    const btn2 = document.getElementById('btnUnlockHint2');
+    const btn3 = document.getElementById('btnUnlockHint3');
+
+    const content1 = document.getElementById('hintContent1');
+    const content2 = document.getElementById('hintContent2');
+    const content3 = document.getElementById('hintContent3');
+
+    if (btn1 && content1) {
+        btn1.onclick = () => {
+            const h = getHintData(caseId);
+            content1.textContent = h.nudge;
+            content1.classList.add('revealed');
+            btn1.disabled = true;
+            btn1.textContent = 'Revealed';
+            window.caseHintsUsed++;
+            window.caseHintsPenalty += 1;
+            playSfx('query');
+            showDetectiveToast('💡 Level 1 Nudge Unlocked (-1 Rank Pt)');
+        };
+    }
+
+    if (btn2 && content2) {
+        btn2.onclick = () => {
+            const h = getHintData(caseId);
+            content2.textContent = h.clue;
+            content2.classList.add('revealed');
+            btn2.disabled = true;
+            btn2.textContent = 'Revealed';
+            window.caseHintsUsed++;
+            window.caseHintsPenalty += 2;
+            playSfx('query');
+            showDetectiveToast('🔍 Level 2 Forensic Clue Unlocked (-2 Rank Pts)');
+        };
+    }
+
+    if (btn3 && content3) {
+        btn3.onclick = () => {
+            const h = getHintData(caseId);
+            content3.textContent = h.nearAnswer;
+            content3.classList.add('revealed');
+            btn3.disabled = true;
+            btn3.textContent = 'Revealed';
+            window.caseHintsUsed++;
+            window.caseHintsPenalty += 5;
+            playSfx('denied');
+            showDetectiveToast('⚠️ Level 3 Contradiction Revealed (Rank C Cap)');
+        };
+    }
+}
+
+function resetHintSystemUI() {
+    window.caseHintsUsed = 0;
+    window.caseHintsPenalty = 0;
+    ['btnUnlockHint1', 'btnUnlockHint2', 'btnUnlockHint3'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) {
+            b.disabled = false;
+            b.textContent = b.id.includes('1') ? 'Reveal (-1 Pt)' : b.id.includes('2') ? 'Reveal (-2 Pts)' : 'Reveal (Caps at Rank C)';
+        }
+    });
+    ['hintContent1', 'hintContent2', 'hintContent3'].forEach(id => {
+        const c = document.getElementById(id);
+        if (c) {
+            c.classList.remove('revealed');
+            c.textContent = 'Awaiting reveal authorization...';
+        }
+    });
+}
+
+// --- 3. EVIDENCE-LINKED INTERROGATION & CONFRONTATION ---
+function initEvidenceConfrontation() {
+    const btnConfront = document.getElementById('btnConfrontEvidence');
+    const select = document.getElementById('interrogateEvidenceSelect');
+    const feedback = document.getElementById('confrontationFeedback');
+    const dialogueEl = document.getElementById('interrogationDialogue');
+
+    if (!btnConfront || !select) return;
+
+    btnConfront.onclick = () => {
+        const suspectSelect = document.getElementById('accusedSuspect');
+        const suspectId = suspectSelect ? parseInt(suspectSelect.value, 10) : 0;
+        const evidenceId = select.value;
+
+        if (!suspectId) {
+            showDetectiveToast('⚠️ Select a suspect to interrogate first.');
+            return;
+        }
+        if (!evidenceId) {
+            showDetectiveToast('⚠️ Choose an exhibit from the dropdown to present.');
+            return;
+        }
+
+        const suspect = (window.currentCaseSuspects || []).find(s => Number(s.suspectId) === Number(suspectId));
+        const sName = suspect ? suspect.name : 'The suspect';
+        const opt = select.options[select.selectedIndex];
+
+        let responseText = '';
+        let isExposedLie = false;
+
+        if (Number(caseId) === 1) {
+            if (sName.includes('Daniel')) {
+                isExposedLie = true;
+                responseText = `[EXPOSED LIE] "${sName}: Wh-where did you find that?! My badge was supposed to be in my drawer! Look... Sarah caught me modifying the ledger balances. I never meant for her to get hurt! She confronted me at 21:20 and I panicked... Dammit, you've got me."`;
+            } else if (sName.includes('Rebecca')) {
+                responseText = `[ALIBI CONFIRMED] "${sName}: That's right, Detective. That parking receipt proves I drove out of the underground lot at 20:30 sharp. I was nowhere near Floor 7 when the ledger vanished."`;
+            } else if (sName.includes('Michael')) {
+                responseText = `[DEFLECTION] "${sName}: Check the camera logs, Detective. That exhibit wasn't logged during my shift. I was monitoring the main dispatch gate until 22:00."`;
+            } else {
+                responseText = `[DEFLECTION] "${sName}: That exhibit has zero connection to me. Check the fingerprints before throwing accusations around."`;
+            }
+        } else {
+            const isLikelyCulprit = (suspect && suspect.alibi && suspect.alibi.toLowerCase().includes('alone')) || (opt && opt.text.toLowerCase().includes(sName.split(' ')[0].toLowerCase()));
+            if (isLikelyCulprit) {
+                isExposedLie = true;
+                responseText = `[EXPOSED LIE] "${sName}: I... how did you tie that to me?! I took every precaution. Fine, you caught the contradiction. The timeline doesn't hold up."`;
+            } else {
+                responseText = `[DEFLECTION] "${sName}: That piece of evidence doesn't link to me, Detective. Look at the timestamps — I was elsewhere. You're barking up the wrong tree."`;
+            }
+        }
+
+        if (dialogueEl) {
+            typewriterText(dialogueEl, responseText, 12);
+        }
+
+        if (feedback) {
+            feedback.style.display = 'block';
+            feedback.className = isExposedLie ? 'confront-exposed' : 'confront-deflected';
+            feedback.textContent = isExposedLie ? '⚖️ CONTRADICTION DETECTED: Suspect faltered and contradicted prior testimony!' : '🛡️ DEFLECTION: Suspect maintained composure and refuted the link.';
+        }
+
+        if (isExposedLie) {
+            playSfx('stamp');
+            completeObjective(3, 'Verify Alibis & Expose Discrepancy');
+            dispatchVanceMessage(3);
+        } else {
+            playSfx('query');
+            completeObjective(3, 'Verify Alibis');
+        }
+    };
+}
+
+function populateInterrogationEvidenceSelect(evidence) {
+    const select = document.getElementById('interrogateEvidenceSelect');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- Choose Exhibit to Present --</option>';
+    if (!evidence || !evidence.length) return;
+
+    evidence.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.evidenceId || e.id || Math.random();
+        opt.textContent = `${e.evidenceType || 'Exhibit'}: ${(e.description || '').substring(0, 38)}...`;
+        select.appendChild(opt);
+    });
+}
+
+// --- 4. RED HERRINGS & DEBRIEF EXONERATIONS ---
+const CASE_RED_HERRINGS = {
+    1: [
+        { name: "Rebecca Torres", role: "Corporate Counsel", reason: "Cleared. She was observed shredding confidential tax audit memoranda (an unrelated compliance issue), but garage security confirmed her vehicle departed at 20:30." },
+        { name: "Michael Chang", role: "Night Security Officer", reason: "Cleared. Camera terminal 3 went dark because he was playing handheld video games during his shift, not aiding the intruder." }
+    ],
+    2: [
+        { name: "Kevin Brooks", role: "Senior Developer", reason: "Cleared. His unrecorded $800 cash withdrawal was for a surprise anniversary gift, not corporate espionage." }
+    ],
+    11: [
+        { name: "Dr. Hector Alvarez", role: "Staff Physician", reason: "Cleared. The missing sedative vials were used to care for his chronically ill daughter off-the-books, unrelated to the syndicate kidnapping." }
+    ],
+    12: [
+        { name: "Pete Sullivan", role: "Head Stablehand", reason: "Cleared. He was spotted with wire pliers near the barn late at night because he was repairing a damaged paddock gate." }
+    ],
+    13: [
+        { name: "Carlos Mendez", role: "Floor Pit Boss", reason: "Cleared. The unlogged chip transfer was him confiscating counterfeit casino tokens passed by foreign tourists." }
+    ]
+};
+
+function renderDebriefRedHerrings(activeCaseId) {
+    const listEl = document.getElementById('debriefRedHerringsList');
+    if (!listEl) return;
+
+    const id = Number(activeCaseId) || 1;
+    const herrings = CASE_RED_HERRINGS[id] || [
+        { name: "Persons of Interest", role: "Witnesses & Staff", reason: "All other questioned persons of interest were fully cleared after forensic verification of their timestamped movements." }
+    ];
+
+    listEl.innerHTML = '';
+    herrings.forEach(h => {
+        const li = document.createElement('li');
+        li.style.marginBottom = '6px';
+        li.innerHTML = `<strong>${esc(h.name)}</strong> (${esc(h.role)}): ${esc(h.reason)}`;
+        listEl.appendChild(li);
+    });
+}
+
+// --- 5. WRONG ARREST FEEDBACK & ATTEMPTS LIMIT ---
+window.caseWarrantAttemptsRemaining = 3;
+
+function updateWarrantQuotaDisplay() {
+    const heartsEl = document.getElementById('warrantAttemptsHearts');
+    const textEl = document.getElementById('warrantAttemptsText');
+    const banner = document.getElementById('caseClosedIaBanner');
+    const btnSubmit = document.getElementById('submitAccusation');
+
+    const rem = window.caseWarrantAttemptsRemaining;
+    if (textEl) textEl.textContent = `${rem} of 3 remaining`;
+
+    let heartsStr = '❤️❤️❤️';
+    if (rem === 2) heartsStr = '❤️❤️🖤';
+    else if (rem === 1) heartsStr = '❤️🖤🖤';
+    else if (rem <= 0) heartsStr = '🖤🖤🖤';
+    if (heartsEl) heartsEl.textContent = heartsStr;
+
+    if (rem <= 0) {
+        if (btnSubmit) btnSubmit.disabled = true;
+        if (banner) {
+            banner.style.display = 'block';
+            banner.innerHTML = `
+                <strong>🚨 INVESTIGATION SUSPENDED BY INTERNAL AFFAIRS</strong><br>
+                You have filed 3 rejected arrest warrants. The suspects have retained counsel and refused further interrogation.
+                <div style="margin-top:6px;">
+                    <button type="button" class="retro-btn" id="btnRestartWarrantQuota" style="font-weight:bold;padding:3px 12px;font-size:11px;">🔄 Reopen Case File &amp; Reset Quota</button>
+                </div>
+            `;
+            const btnRestart = document.getElementById('btnRestartWarrantQuota');
+            if (btnRestart) {
+                btnRestart.onclick = () => {
+                    window.caseWarrantAttemptsRemaining = 3;
+                    updateWarrantQuotaDisplay();
+                    banner.style.display = 'none';
+                    if (btnSubmit) btnSubmit.disabled = false;
+                    const resultEl = document.getElementById('accusationResult');
+                    if (resultEl) resultEl.innerHTML = '';
+                    showDetectiveToast('🔄 Case File Reopened. Proceed carefully.');
+                };
+            }
+        }
+    } else {
+        if (banner) banner.style.display = 'none';
+        if (btnSubmit) btnSubmit.disabled = false;
+    }
+}
+
+// --- 6. UNLOCKABLE FORENSIC EVIDENCE ---
+window.latentEvidenceUnlocked = false;
+
+function checkUnlockLatentEvidence(actionType) {
+    if (window.latentEvidenceUnlocked) return;
+    window.latentEvidenceUnlocked = true;
+
+    playSfx('clue');
+    showDetectiveToast('🔓 FORENSIC LAB UPDATE: Latent Exhibit #E-CL Decrypted!');
+
+    const lockedCard = document.querySelector('.clue-card-locked');
+    if (lockedCard) {
+        lockedCard.classList.remove('clue-card-locked');
+        lockedCard.classList.add('clue-card-unlocked');
+        const desc = lockedCard.querySelector('.clue-desc');
+        if (desc) {
+            desc.textContent = "LATENT ANALYSIS DECRYPTED: Access records prove terminal #4 at 21:20 required a physical bypass code known only to executive staff.";
+        }
+        const tag = lockedCard.querySelector('.clue-badge');
+        if (tag) {
+            tag.textContent = 'UNLOCKED EXHIBIT';
+            tag.style.background = '#dcfce7';
+            tag.style.color = '#166534';
+        }
+    }
+}
+
+// --- 7. CAPTAIN VANCE NARRATIVE BEATS ---
+const VANCE_MEMOS = [
+    {
+        id: 1,
+        trigger: 'start',
+        subject: '📌 Case Directive: Initial Protocol',
+        time: 'Today, 08:30 AM',
+        body: 'Detective Miller,\n\nWe have a fresh incident file on your desk. Start by reviewing physical clues and crime scene exhibits before making assumptions. Work through the access records and verify every claimed alibi.\n\nDo not file an apprehension warrant without forensic proof.\n\n— Capt. R. Vance'
+    },
+    {
+        id: 2,
+        trigger: 'query',
+        subject: '⚡ Mainframe Records Update',
+        time: 'Today, 09:15 AM',
+        body: 'Detective,\n\nI see you tapped into the precinct database. Good. Keep an eye on entry vs exit timestamps. In minor crimes and fraud, the cover-up is always clumsier than the deed. Look for whoever was in the wrong place at the wrong time.\n\n— Capt. R. Vance'
+    },
+    {
+        id: 3,
+        trigger: 'interrogation',
+        subject: '🎙️ Interrogation Room Wiretap',
+        time: 'Today, 10:02 AM',
+        body: 'Miller,\n\nI monitored the audio from interrogation. One of those stories is crumbling under scrutiny. When you confront them with physical exhibits, they will break. Assemble your evidence chain and prepare the warrant.\n\n— Capt. R. Vance'
+    },
+    {
+        id: 4,
+        trigger: 'warrant_denied',
+        subject: '⚠️ Internal Affairs Pushback: Warrant Rejected',
+        time: 'Today, 10:45 AM',
+        body: 'Detective!\n\nThe District Attorney just rejected that warrant. You are burning through our judicial quota. Cross-reference their verified phone calls and departure records before you submit another order! We only get 3 attempts before IA steps in.\n\n— Capt. R. Vance'
+    }
+];
+
+window.receivedVanceMemos = [];
+
+function initCaptainVanceInbox() {
+    window.receivedVanceMemos = [VANCE_MEMOS[0]];
+    renderVanceInbox();
+}
+
+function dispatchVanceMessage(memoId) {
+    const memo = VANCE_MEMOS.find(m => m.id === memoId);
+    if (!memo) return;
+    if (window.receivedVanceMemos.some(m => m.id === memoId)) return;
+
+    window.receivedVanceMemos.push(memo);
+    renderVanceInbox();
+
+    const badge = document.getElementById('msgUnreadBadge');
+    if (badge) {
+        badge.style.display = 'block';
+        badge.textContent = String(window.receivedVanceMemos.length);
+    }
+
+    playSfx('clue');
+    showDetectiveToast(`📻 RADIO: Captain Vance dispatched a new memo!`);
+}
+
+function renderVanceInbox() {
+    const list = document.getElementById('msgInboxList');
+    const countEl = document.getElementById('msgInboxCount');
+    if (!list) return;
+
+    if (countEl) countEl.textContent = `${window.receivedVanceMemos.length} Messages`;
+
+    list.innerHTML = '';
+    window.receivedVanceMemos.forEach((m, idx) => {
+        const item = document.createElement('div');
+        item.className = `inbox-item ${idx === 0 ? 'active' : ''}`;
+        item.innerHTML = `
+            <div>
+                <div style="font-weight:bold;">${esc(m.subject)}</div>
+                <div style="font-size:10px;color:#64748b;">${esc(m.time)}</div>
+            </div>
+            <span style="font-size:11px;">✉️</span>
+        `;
+
+        item.onclick = () => {
+            list.querySelectorAll('.inbox-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            viewVanceMemo(m);
+        };
+
+        list.appendChild(item);
+    });
+
+    if (window.receivedVanceMemos.length > 0) {
+        viewVanceMemo(window.receivedVanceMemos[window.receivedVanceMemos.length - 1]);
+    }
+}
+
+function viewVanceMemo(memo) {
+    const subjEl = document.getElementById('msgViewSubject');
+    const metaEl = document.getElementById('msgViewMeta');
+    const bodyEl = document.getElementById('msgViewBody');
+
+    if (subjEl) subjEl.textContent = memo.subject;
+    if (metaEl) metaEl.textContent = `FROM: Captain Vance • ${memo.time}`;
+    if (bodyEl) bodyEl.innerHTML = memo.body.replace(/\n/g, '<br>');
+
+    const badge = document.getElementById('msgUnreadBadge');
+    if (badge) badge.style.display = 'none';
 }

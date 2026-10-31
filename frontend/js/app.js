@@ -305,6 +305,12 @@ function bringToFront(win) {
         if (typeof renderLeaderboard === 'function') renderLeaderboard();
         if (typeof renderAchievements === 'function') renderAchievements();
     }
+    if (win.id === 'win-arrest') {
+        if (window.currentCaseEvidence && window.currentCaseEvidence.length > 0) {
+            if (typeof populateInterrogationEvidenceSelect === 'function') populateInterrogationEvidenceSelect(window.currentCaseEvidence);
+            if (typeof renderArrestEvidenceChips === 'function') renderArrestEvidenceChips(window.currentCaseEvidence);
+        }
+    }
     updateTaskbar();
 }
 
@@ -1342,6 +1348,7 @@ async function loadEvidence(id) {
 
         window.currentCaseEvidence = evidence;
         renderArrestEvidenceChips(evidence);
+        populateInterrogationEvidenceSelect(evidence);
     } catch (e) {
         grid.innerHTML = `<div style="padding:12px;font-size:11px;color:#c00;">Error loading clues: ${esc(e.message)}</div>`;
     }
@@ -2384,6 +2391,9 @@ function renderArrestSuspectPicker(suspects) {
             if (sec) sec.style.display = 'block';
             if (targetLabel) targetLabel.textContent = `INTERROGATING: ${s.name.toUpperCase()} (${s.occupation || 'SUSPECT'})`;
             if (dialogue) dialogue.textContent = `"You have no right holding me here, Detective. Ask your questions so I can leave."`;
+            if (window.currentCaseEvidence && typeof populateInterrogationEvidenceSelect === 'function') {
+                populateInterrogationEvidenceSelect(window.currentCaseEvidence);
+            }
             if (typeof completeObjective === 'function') completeObjective(3, 'Verify Alibis');
             if (typeof checkUnlockLatentEvidence === 'function') checkUnlockLatentEvidence('interrogation');;
 
@@ -2427,6 +2437,9 @@ function renderArrestSuspectPicker(suspects) {
 }
 
 function renderArrestEvidenceChips(evidence) {
+    if (typeof populateInterrogationEvidenceSelect === 'function') {
+        populateInterrogationEvidenceSelect(evidence);
+    }
     const container = document.getElementById('arrestEvidenceChips');
     const expText = document.getElementById('explanation');
     if (!container) return;
@@ -3238,13 +3251,17 @@ function initEvidenceConfrontation() {
 
     if (!btnConfront || !select) return;
 
+    if (window.currentCaseEvidence && (!select.options || select.options.length <= 1)) {
+        populateInterrogationEvidenceSelect(window.currentCaseEvidence);
+    }
+
     btnConfront.onclick = () => {
         const suspectSelect = document.getElementById('accusedSuspect');
         const suspectId = suspectSelect ? parseInt(suspectSelect.value, 10) : 0;
         const evidenceId = select.value;
 
         if (!suspectId) {
-            showDetectiveToast('⚠️ Select a suspect to interrogate first.');
+            showDetectiveToast('⚠️ Select a suspect to interrogate first in Step 1.');
             return;
         }
         if (!evidenceId) {
@@ -3255,6 +3272,7 @@ function initEvidenceConfrontation() {
         const suspect = (window.currentCaseSuspects || []).find(s => Number(s.suspectId) === Number(suspectId));
         const sName = suspect ? suspect.name : 'The suspect';
         const opt = select.options[select.selectedIndex];
+        const selectedEvidence = (window.currentCaseEvidence || []).find(e => String(e.evidenceId || e.id) === String(evidenceId));
 
         let responseText = '';
         let isExposedLie = false;
@@ -3262,7 +3280,14 @@ function initEvidenceConfrontation() {
         if (Number(caseId) === 1) {
             if (sName.includes('Daniel')) {
                 isExposedLie = true;
-                responseText = `[EXPOSED LIE] "${sName}: Wh-where did you find that?! My badge was supposed to be in my drawer! Look... Sarah caught me modifying the ledger balances. I never meant for her to get hurt! She confronted me at 21:20 and I panicked... Dammit, you've got me."`;
+                const optText = (opt ? opt.text : '').toLowerCase();
+                if (optText.includes('card') || optText.includes('badge')) {
+                    responseText = `[EXPOSED LIE] "${sName}: Wh-where did you find that?! My badge was supposed to be in my drawer! Look... Sarah caught me modifying the ledger balances. I never meant for her to get hurt! She confronted me at 21:20 and I panicked... Dammit, you've got me."`;
+                } else if (optText.includes('ledger') || optText.includes('document')) {
+                    responseText = `[EXPOSED LIE] "${sName}: That handwritten ledger... that was supposed to stay locked in Morgan's office! Look... Sarah caught me altering the ledger balances. When I unlocked the office at 21:20 she was still at her desk. She confronted me and I panicked... Dammit, you've got me."`;
+                } else {
+                    responseText = `[EXPOSED LIE] "${sName}: Wh-where did you find that?! Sarah caught me modifying the ledger balances. When I unlocked the office at 21:20 she was still at her desk... She confronted me and I panicked. You've got me."`;
+                }
             } else if (sName.includes('Rebecca')) {
                 responseText = `[ALIBI CONFIRMED] "${sName}: That's right, Detective. That parking receipt proves I drove out of the underground lot at 20:30 sharp. I was nowhere near Floor 7 when the ledger vanished."`;
             } else if (sName.includes('Michael')) {
@@ -3290,6 +3315,22 @@ function initEvidenceConfrontation() {
             feedback.textContent = isExposedLie ? '⚖️ CONTRADICTION DETECTED: Suspect faltered and contradicted prior testimony!' : '🛡️ DEFLECTION: Suspect maintained composure and refuted the link.';
         }
 
+        // Link exhibit to Step 3 and explanation field
+        const expText = document.getElementById('explanation');
+        if (expText && selectedEvidence) {
+            const label = `[Evidence: ${selectedEvidence.evidenceType || 'Exhibit'} - ${selectedEvidence.description}]`;
+            if (!expText.value.includes(label)) {
+                expText.value = (expText.value ? expText.value + '\n' : '') + label;
+            }
+        }
+        if (selectedEvidence) {
+            document.querySelectorAll('#arrestEvidenceChips .evidence-chip').forEach(chip => {
+                if (chip.textContent.includes(selectedEvidence.evidenceType || '')) {
+                    chip.classList.add('selected');
+                }
+            });
+        }
+
         if (isExposedLie) {
             playSfx('stamp');
             completeObjective(3, 'Verify Alibis & Expose Discrepancy');
@@ -3305,16 +3346,34 @@ function populateInterrogationEvidenceSelect(evidence) {
     const select = document.getElementById('interrogateEvidenceSelect');
     if (!select) return;
 
+    if (!evidence || !evidence.length) {
+        if (window.currentCaseEvidence && window.currentCaseEvidence.length > 0) {
+            evidence = window.currentCaseEvidence;
+        } else {
+            return;
+        }
+    }
+
+    const currentVal = select.value;
     select.innerHTML = '<option value="">-- Choose Exhibit to Present --</option>';
-    if (!evidence || !evidence.length) return;
 
     evidence.forEach(e => {
         const opt = document.createElement('option');
-        opt.value = e.evidenceId || e.id || Math.random();
-        opt.textContent = `${e.evidenceType || 'Exhibit'}: ${(e.description || '').substring(0, 38)}...`;
+        const id = e.evidenceId || e.id || '';
+        opt.value = id;
+        const type = e.evidenceType || 'Exhibit';
+        const desc = (e.description || '').trim();
+        const shortDesc = desc.length > 55 ? desc.substring(0, 52) + '...' : desc;
+        opt.textContent = `${type}: ${shortDesc}`;
         select.appendChild(opt);
     });
+
+    if (currentVal) {
+        select.value = currentVal;
+    }
 }
+
+window.populateInterrogationEvidenceSelect = populateInterrogationEvidenceSelect;
 
 // --- 4. RED HERRINGS & DEBRIEF EXONERATIONS ---
 const CASE_RED_HERRINGS = {

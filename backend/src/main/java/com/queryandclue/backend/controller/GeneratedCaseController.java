@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 
@@ -66,7 +67,20 @@ public class GeneratedCaseController {
     }
 
     @PostMapping("/generate-and-save")
-    public ResponseEntity<?> generateAndSaveCase(HttpServletRequest request) {
+    public ResponseEntity<?> generateAndSaveCase(
+            HttpServletRequest request,
+            @RequestParam(value = "difficulty", required = false) String difficulty) {
+
+        String normDifficulty = null;
+        if (difficulty != null && !difficulty.isBlank()) {
+            String u = difficulty.trim().toUpperCase();
+            if (!u.equals("EASY") && !u.equals("MEDIUM") && !u.equals("HARD")) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Invalid difficulty. Allowed values: EASY, MEDIUM, HARD"));
+            }
+            normDifficulty = u;
+        }
+
         String clientIp = getClientIp(request);
         String key = clientIp + ":" + LocalDate.now();
         AtomicInteger counter = dailyGenerations.computeIfAbsent(key, k -> new AtomicInteger(0));
@@ -80,7 +94,7 @@ public class GeneratedCaseController {
 
         // Try up to 2 times in case AI generates a duplicate title
         for (int attempt = 1; attempt <= 2; attempt++) {
-            GeneratedCase generatedCase = aiCaseGeneratorService.generateCase();
+            GeneratedCase generatedCase = aiCaseGeneratorService.generateCase(normDifficulty);
 
             boolean valid = caseValidator.validate(generatedCase);
             if (!valid) {

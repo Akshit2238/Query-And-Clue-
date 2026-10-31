@@ -46,11 +46,23 @@ public class Case {
     }
 
     public String getDifficulty() {
+        if (difficulty == null || difficulty.isBlank()) {
+            return "EASY";
+        }
         return difficulty;
     }
 
     public void setDifficulty(String difficulty) {
-        this.difficulty = difficulty;
+        if (difficulty == null || difficulty.isBlank()) {
+            this.difficulty = "EASY";
+        } else {
+            String u = difficulty.trim().toUpperCase();
+            if (u.equals("EASY") || u.equals("MEDIUM") || u.equals("HARD")) {
+                this.difficulty = u;
+            } else {
+                this.difficulty = "EASY";
+            }
+        }
     }
 
     public LocalDate getCrimeDate() {

@@ -108,10 +108,47 @@
         .chapter-title { font-weight: bold; font-size: 12px; }
         .chapter-meta { font-size: 10px; color: #666; margin-top: 2px; }
 
+        .difficulty-filter-bar {
+            display: flex; align-items: center; gap: 4px;
+            margin-bottom: 8px; font-size: 11px;
+        }
+        .diff-filter-label {
+            font-weight: bold; color: #000080; margin-right: 4px;
+        }
+        .diff-filter-btn {
+            background: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #000000;
+            border-bottom: 2px solid #000000;
+            box-shadow: inset -1px -1px #808080;
+            padding: 3px 8px;
+            font-family: "Tahoma", sans-serif; font-size: 11px;
+            cursor: pointer; min-width: 46px; text-align: center;
+        }
+        .diff-filter-btn:active, .diff-filter-btn.active {
+            background: #000080; color: #ffffff;
+            border-top: 2px solid #000000;
+            border-left: 2px solid #000000;
+            border-right: 2px solid #ffffff;
+            border-bottom: 2px solid #ffffff;
+            box-shadow: none; font-weight: bold;
+        }
+
         .chapter-badge {
             font-size: 9px; padding: 2px 6px;
-            border: 1px solid currentColor; opacity: 0.8;
+            border-radius: 2px; font-weight: bold;
             white-space: nowrap; flex-shrink: 0;
+            text-transform: uppercase;
+        }
+        .chapter-badge.badge-easy {
+            background: #dcfce7; color: #166534; border: 1px solid #86efac;
+        }
+        .chapter-badge.badge-medium {
+            background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;
+        }
+        .chapter-badge.badge-hard {
+            background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;
         }
 
         .chapter-loading {
@@ -266,6 +303,14 @@
             <div style="font-size: 11px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; background: #fff; padding: 4px 8px; border: 1px solid #808080; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);">
                 <span style="font-weight: bold; color: #000080;">🕵️ Detective:</span>
                 <input type="text" id="welcomeOfficerNameInput" style="flex: 1; border: none; outline: none; font-size: 11px; font-family: inherit; font-weight: bold; color: #0f172a;" placeholder="Enter your name (e.g. Detective Miller)" maxlength="25">
+            </div>
+
+            <div class="difficulty-filter-bar" id="difficultyFilterBar">
+                <span class="diff-filter-label">Filter:</span>
+                <button class="diff-filter-btn active" data-filter="ALL" onclick="filterDifficulty('ALL')">All</button>
+                <button class="diff-filter-btn" data-filter="EASY" onclick="filterDifficulty('EASY')">Easy</button>
+                <button class="diff-filter-btn" data-filter="MEDIUM" onclick="filterDifficulty('MEDIUM')">Medium</button>
+                <button class="diff-filter-btn" data-filter="HARD" onclick="filterDifficulty('HARD')">Hard</button>
             </div>
 
             <div class="chapter-list" id="chapterList">
@@ -468,39 +513,74 @@
             }
         }
 
+        let allLoadedCases = [];
+        let currentDifficultyFilter = 'ALL';
+
+        function filterDifficulty(diff) {
+            currentDifficultyFilter = diff;
+            document.querySelectorAll('.diff-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === diff);
+            });
+            renderCasesList();
+        }
+
+        function renderCasesList() {
+            const list = document.getElementById('chapterList');
+            list.innerHTML = '';
+
+            let filtered = allLoadedCases;
+            if (currentDifficultyFilter !== 'ALL') {
+                filtered = allLoadedCases.filter(c => {
+                    const d = (c.difficulty || 'EASY').toUpperCase();
+                    return d === currentDifficultyFilter;
+                });
+            }
+
+            if (!filtered.length) {
+                list.innerHTML = `<div class="chapter-loading">No ${currentDifficultyFilter === 'ALL' ? '' : currentDifficultyFilter + ' '}cases found.</div>`;
+                document.getElementById('btnOpen').disabled = true;
+                return;
+            }
+
+            filtered.forEach((c) => {
+                const icon = getCrimeIcon(c.crimeType);
+                const item = document.createElement('div');
+                const origIndex = allLoadedCases.indexOf(c);
+                const displayNum = String(origIndex + 1).padStart(3, '0');
+                const isSelected = selectedCaseId === c.caseId;
+                item.className = 'chapter-item' + (isSelected ? ' selected' : '');
+                item.dataset.id = c.caseId;
+
+                const diff = (c.difficulty || 'EASY').toUpperCase();
+                const badgeCls = diff === 'HARD' ? 'badge-hard' : (diff === 'MEDIUM' ? 'badge-medium' : 'badge-easy');
+
+                item.innerHTML = `
+                    <span class="chapter-icon">${icon}</span>
+                    <span class="chapter-info">
+                        <div class="chapter-title">${c.title || 'Untitled Case'}</div>
+                        <div class="chapter-meta">${c.crimeType || 'Unknown'} · Case #${displayNum}</div>
+                    </span>
+                    <span class="chapter-badge ${badgeCls}">${diff}</span>
+                `;
+                item.addEventListener('click', () => selectCase(c, item, origIndex + 1));
+                item.addEventListener('dblclick', () => previewCase());
+                list.appendChild(item);
+            });
+
+            if (selectedCaseId && !filtered.some(c => c.caseId === selectedCaseId)) {
+                document.getElementById('btnOpen').disabled = true;
+            } else if (selectedCaseId) {
+                document.getElementById('btnOpen').disabled = false;
+            }
+        }
+
         async function loadCases() {
             const list = document.getElementById('chapterList');
             try {
                 const res = await fetchWithFallback('/cases');
                 if (!res.ok) throw new Error('API error');
-                const cases = await res.json();
-
-                list.innerHTML = '';
-
-                if (!cases.length) {
-                    list.innerHTML = '<div class="chapter-loading">No cases found.</div>';
-                    return;
-                }
-
-                cases.forEach((c, index) => {
-                    const icon = getCrimeIcon(c.crimeType);
-                    const item = document.createElement('div');
-                    const displayNum = String(index + 1).padStart(3, '0');
-                    item.className = 'chapter-item';
-                    item.dataset.id = c.caseId;
-                    item.innerHTML = `
-                        <span class="chapter-icon">${icon}</span>
-                        <span class="chapter-info">
-                            <div class="chapter-title">${c.title || 'Untitled Case'}</div>
-                            <div class="chapter-meta">${c.crimeType || 'Unknown'} · Case #${displayNum}</div>
-                        </span>
-                        <span class="chapter-badge">${c.difficulty || 'NORMAL'}</span>
-                    `;
-                    item.addEventListener('click', () => selectCase(c, item, index + 1));
-                    item.addEventListener('dblclick', () => previewCase());
-                    list.appendChild(item);
-                });
-
+                allLoadedCases = await res.json();
+                renderCasesList();
             } catch (e) {
                 list.innerHTML = `
                     <div style="padding:16px;text-align:center;color:#c00;font-family:monospace;font-size:11px;">
@@ -540,10 +620,9 @@
             // Tags
             const tagsEl = document.getElementById('previewTags');
             tagsEl.innerHTML = '';
-            if (caseData.difficulty) {
-                const cls = DIFFICULTY_CLASS[caseData.difficulty] || '';
-                tagsEl.innerHTML += `<span class="popup-tag ${cls}">${caseData.difficulty}</span>`;
-            }
+            const diff = (caseData.difficulty || 'EASY').toUpperCase();
+            const tagCls = diff === 'HARD' ? 'red' : (diff === 'MEDIUM' ? 'gold' : 'green');
+            tagsEl.innerHTML += `<span class="popup-tag ${tagCls}">${diff}</span>`;
             if (caseData.crimeType) {
                 tagsEl.innerHTML += `<span class="popup-tag">${caseData.crimeType}</span>`;
             }

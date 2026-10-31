@@ -79,7 +79,12 @@ public class CaseValidator {
             return false;
         }
 
-        if (isBlank(generatedCase.getCaseData().getDifficulty())) {
+        String difficulty = generatedCase.getCaseData().getDifficulty();
+        if (isBlank(difficulty)) {
+            return false;
+        }
+        String diffUpper = difficulty.trim().toUpperCase();
+        if (!diffUpper.equals("EASY") && !diffUpper.equals("MEDIUM") && !diffUpper.equals("HARD")) {
             return false;
         }
 

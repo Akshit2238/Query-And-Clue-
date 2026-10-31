@@ -78,7 +78,8 @@ public class CaseSaveService {
 
         newCase.setTitle(generatedCase.getCaseData().getTitle());
         newCase.setDescription(generatedCase.getCaseData().getDescription());
-        newCase.setDifficulty(generatedCase.getCaseData().getDifficulty());
+        String rawDiff = generatedCase.getCaseData().getDifficulty();
+        newCase.setDifficulty(normaliseDifficulty(rawDiff));
         newCase.setCrimeType(generatedCase.getCaseData().getCrimeType());
 
         if (generatedCase.getCaseData().getCrimeDate() != null
@@ -334,6 +335,20 @@ public class CaseSaveService {
 
     public boolean titleExists(String title) {
         return caseRepository.existsByTitle(title);
+    }
+
+
+    /**
+     * Normalises a difficulty string to EASY/MEDIUM/HARD.
+     * Defaults to EASY for unrecognised values.
+     */
+    static String normaliseDifficulty(String raw) {
+        if (raw == null || raw.isBlank()) return "EASY";
+        switch (raw.trim().toUpperCase()) {
+            case "MEDIUM": case "INTERMEDIATE": case "MODERATE": return "MEDIUM";
+            case "HARD":   case "DIFFICULT":    case "EXPERT":   return "HARD";
+            default: return "EASY";
+        }
     }
 
     /**

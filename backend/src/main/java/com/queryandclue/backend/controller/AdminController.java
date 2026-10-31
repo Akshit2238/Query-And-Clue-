@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.queryandclue.backend.entity.Case;
@@ -49,6 +50,17 @@ public class AdminController {
         this.suspectRepository = suspectRepository;
     }
 
+    /** Normalise difficulty string to EASY/MEDIUM/HARD. Returns INVALID if invalid. */
+    static String normaliseDifficulty(String raw) {
+        if (raw == null || raw.isBlank()) return null; // null = let AI decide
+        switch (raw.trim().toUpperCase()) {
+            case "EASY": return "EASY";
+            case "MEDIUM": return "MEDIUM";
+            case "HARD": return "HARD";
+            default: return "INVALID";
+        }
+    }
+
     private boolean isAdmin(String key) {
         String adminKey = System.getenv("ADMIN_KEY");
         if (adminKey == null || adminKey.isBlank()) {
@@ -60,14 +72,25 @@ public class AdminController {
     private static final java.util.concurrent.atomic.AtomicLong LAST_GEN_TIMESTAMP = new java.util.concurrent.atomic.AtomicLong(0);
     private static final long MIN_GEN_INTERVAL_MS = 3000;
 
-    /** Rate-limited case generation */
+    public ResponseEntity<?> adminGenerate(String key) {
+        return adminGenerate(key, null);
+    }
+
+    /** Rate-limited case generation with optional difficulty (EASY/MEDIUM/HARD) */
     @PostMapping("/generate")
     public ResponseEntity<?> adminGenerate(
-            @RequestHeader(value = "X-Admin-Key", required = false) String key) {
+            @RequestHeader(value = "X-Admin-Key", required = false) String key,
+            @RequestParam(value = "difficulty", required = false) String difficulty) {
 
         if (!isAdmin(key)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Unauthorized"));
+        }
+
+        String normDifficulty = normaliseDifficulty(difficulty);
+        if ("INVALID".equals(normDifficulty)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid difficulty. Allowed values: EASY, MEDIUM, HARD"));
         }
 
         long now = System.currentTimeMillis();
@@ -79,7 +102,7 @@ public class AdminController {
         LAST_GEN_TIMESTAMP.set(now);
 
         for (int attempt = 1; attempt <= 3; attempt++) {
-            GeneratedCase generatedCase = aiCaseGeneratorService.generateCase();
+            GeneratedCase generatedCase = aiCaseGeneratorService.generateCase(normDifficulty);
 
             if (!caseValidator.validate(generatedCase)) {
                 continue;
@@ -121,6 +144,14 @@ public class AdminController {
         if (!isAdmin(key)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Unauthorized"));
+        }
+
+        if (updates.containsKey("difficulty")) {
+            String d = normaliseDifficulty(updates.get("difficulty"));
+            if ("INVALID".equals(d)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Invalid difficulty. Allowed values: EASY, MEDIUM, HARD"));
+            }
         }
 
         return caseRepository.findById(id).map(c -> {

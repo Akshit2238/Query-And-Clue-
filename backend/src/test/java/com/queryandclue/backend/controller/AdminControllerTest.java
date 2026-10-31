@@ -139,7 +139,7 @@ class AdminControllerTest {
         assertEquals("Updated Title", updated.getTitle());
         assertEquals("Homicide", updated.getCrimeType());
         assertEquals("Updated narrative", updated.getDescription());
-        assertEquals("Hard", updated.getDifficulty());
+        assertEquals("HARD", updated.getDifficulty());
         verify(caseRepository).save(testCase);
     }
 
@@ -194,11 +194,28 @@ class AdminControllerTest {
         assertTrue(hints.get(0).contains("SELECT * FROM suspects"));
     }
 
+
+    @Test
+    void testAdminGenerate_InvalidDifficulty_ReturnsBadRequest() {
+        ResponseEntity<?> resp = adminController.adminGenerate(VALID_KEY, "EXTREME");
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+    }
+
+    @Test
+    void testUpdateCase_InvalidDifficulty_ReturnsBadRequest() {
+        ResponseEntity<?> resp = adminController.updateCase(1, Map.of("difficulty", "INVALID_DIFF"), VALID_KEY);
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+    }
+
     // --- Minimal Stub Classes avoiding Java 25 Byte Buddy class instrumentation ---
     private static class StubAICaseGeneratorService extends AICaseGeneratorService {
         int generateCount = 0;
         StubAICaseGeneratorService() { super(null); }
         @Override public GeneratedCase generateCase() {
+            generateCount++;
+            return null;
+        }
+        @Override public GeneratedCase generateCase(String diff) {
             generateCount++;
             return null;
         }

@@ -1581,10 +1581,18 @@ async function loadCaseList() {
             const solvedBadge = isSolved ? `<span style="margin-left:6px;font-size:9.5px;background:#dcfce7;border:1px solid #86efac;color:#166534;padding:1px 5px;border-radius:2px;font-weight:bold;">✓ SOLVED [Rank ${solvedRank}]</span>` : '';
             const dailyBadge = isDaily ? `<span style="margin-left:6px;font-size:9.5px;background:#fef3c7;border:1px solid #f59e0b;color:#92400e;padding:1px 5px;border-radius:2px;font-weight:bold;">📅 DAILY</span>` : '';
 
+            const diff = (c.difficulty || 'EASY').toUpperCase();
+            const diffStyle = diff === 'HARD'
+                ? 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;'
+                : (diff === 'MEDIUM'
+                    ? 'background:#fef3c7;color:#92400e;border:1px solid #fcd34d;'
+                    : 'background:#dcfce7;color:#166534;border:1px solid #86efac;');
+            const diffBadge = `<span style="font-size:9px;font-weight:bold;padding:1px 5px;border-radius:2px;margin-right:6px;${diffStyle}">${diff}</span>`;
+
             div.innerHTML = `
                 <div>
                     <strong>Case #${displayNum}: ${esc(c.title)}</strong>${solvedBadge}${dailyBadge}
-                    <div style="font-size:10px;color:#555;margin-top:2px;">${esc(c.difficulty || 'Normal')} · ${esc(c.crimeType || '')}</div>
+                    <div style="font-size:10px;color:#555;margin-top:3px;display:flex;align-items:center;">${diffBadge}<span>${esc(c.crimeType || '')}</span></div>
                 </div>
                 <button class="retro-btn btn-select-case" data-case-id="${c.caseId}" style="font-size:11px;padding:3px 12px;min-width:68px;font-weight:${isCurrent ? 'bold' : 'normal'};" ${isCurrent ? 'disabled' : ''}>
                     ${isCurrent ? 'Active' : 'Select'}

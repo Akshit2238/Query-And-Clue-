@@ -54,6 +54,10 @@ public class AICaseGeneratorService {
     }
 
     public GeneratedCase generateCase() {
+        return generateCase(null);
+    }
+
+    public GeneratedCase generateCase(String requestedDifficulty) {
 
         String apiKey = System.getenv("GROQ_API_KEY");
 
@@ -65,6 +69,33 @@ public class AICaseGeneratorService {
 
         String theme = THEMES.get(random.nextInt(THEMES.size()));
 
+        String difficultyInstruction = "";
+        if (requestedDifficulty != null) {
+            difficultyInstruction = switch (requestedDifficulty) {
+                case "MEDIUM" -> """
+                        DIFFICULTY REQUIREMENT: This case MUST be rated MEDIUM difficulty.
+                        - Require 2-3 SQL JOINs across different tables to solve.
+                        - Include contradictory evidence that requires cross-referencing.
+                        - Suspect alibis should partially overlap and need SQL to distinguish.
+                        - Set case.difficulty to exactly "MEDIUM".
+                        """;
+                case "HARD" -> """
+                        DIFFICULTY REQUIREMENT: This case MUST be rated HARD difficulty.
+                        - Require complex SQL with GROUP BY, HAVING, or subqueries to solve.
+                        - Include conflicting timelines and interconnected suspect relationships.
+                        - The culprit's guilt must be provable ONLY through multi-table analysis.
+                        - Set case.difficulty to exactly "HARD".
+                        """;
+                default -> """
+                        DIFFICULTY REQUIREMENT: This case MUST be rated EASY difficulty.
+                        - Solvable with simple SELECT and WHERE queries.
+                        - Evidence directly points to one suspect.
+                        - Minimal SQL joins needed.
+                        - Set case.difficulty to exactly "EASY".
+                        """;
+            };
+        }
+
         String prompt = """
                 Generate exactly ONE original fictional detective case for an SQL investigation game.
 
@@ -74,7 +105,9 @@ public class AICaseGeneratorService {
 
                 The case must be logically consistent, solvable, and fictional.
 
-                EXACT DATA COUNTS:""".formatted(theme) + """
+                %s
+
+                EXACT DATA COUNTS:""".formatted(theme, difficultyInstruction) + """
                 - 1 victim
                 - exactly 4 suspects
                 - exactly 1 crime scene
@@ -178,10 +211,20 @@ public class AICaseGeneratorService {
                 );
             }
 
-            return objectMapper.readValue(
+            GeneratedCase generatedCase = objectMapper.readValue(
                     json,
                     GeneratedCase.class
             );
+
+            if (generatedCase != null && generatedCase.getCaseData() != null) {
+                if (requestedDifficulty != null && !requestedDifficulty.isBlank()) {
+                    generatedCase.getCaseData().setDifficulty(requestedDifficulty.trim().toUpperCase());
+                } else if (generatedCase.getCaseData().getDifficulty() != null) {
+                    generatedCase.getCaseData().setDifficulty(generatedCase.getCaseData().getDifficulty().trim().toUpperCase());
+                }
+            }
+
+            return generatedCase;
 
         } catch (InterruptedException e) {
 

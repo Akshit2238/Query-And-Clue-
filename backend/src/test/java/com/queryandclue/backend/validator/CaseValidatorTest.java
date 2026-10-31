@@ -147,4 +147,24 @@ class CaseValidatorTest {
 
         assertFalse(caseValidator.validate(sampleCase), "Solvability check must fail when culprit has no forensic activity recorded");
     }
+
+    @Test
+    void validate_whenDifficultyInvalid_returnsFalse() {
+        sampleCase.getCaseData().setDifficulty("IMPOSSIBLE");
+        assertFalse(caseValidator.validate(sampleCase), "Invalid difficulty must be rejected");
+
+        sampleCase.getCaseData().setDifficulty("");
+        assertFalse(caseValidator.validate(sampleCase), "Blank difficulty must be rejected");
+
+        sampleCase.getCaseData().setDifficulty(null);
+        assertFalse(caseValidator.validate(sampleCase), "Null difficulty must be rejected");
+    }
+
+    @Test
+    void validate_whenDifficultyValid_returnsTrue() {
+        for (String diff : List.of("EASY", "MEDIUM", "HARD", "easy", "Medium", "hard")) {
+            sampleCase.getCaseData().setDifficulty(diff);
+            assertTrue(caseValidator.validate(sampleCase), "Valid difficulty should be accepted: " + diff);
+        }
+    }
 }

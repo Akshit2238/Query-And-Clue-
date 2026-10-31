@@ -184,4 +184,30 @@ class CaseControllerTest {
         assertEquals(404, response.getStatusCode().value());
         assertNull(response.getBody());
     }
+
+    @Test
+    void testCaseDefaultDifficulty_WhenNullOrBlank_DefaultsToEasy() {
+        Case c = new Case();
+        c.setDifficulty(null);
+        assertEquals("EASY", c.getDifficulty());
+
+        c.setDifficulty("");
+        assertEquals("EASY", c.getDifficulty());
+
+        c.setDifficulty("INVALID_DIFF");
+        assertEquals("EASY", c.getDifficulty());
+    }
+
+    @Test
+    void testCaseDifficulty_WhenValid_ReturnsNormalized() {
+        Case c = new Case();
+        c.setDifficulty("Hard");
+        assertEquals("HARD", c.getDifficulty());
+
+        c.setDifficulty("medium");
+        assertEquals("MEDIUM", c.getDifficulty());
+
+        c.setDifficulty("EASY");
+        assertEquals("EASY", c.getDifficulty());
+    }
 }

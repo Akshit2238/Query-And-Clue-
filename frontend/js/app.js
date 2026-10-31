@@ -14,16 +14,41 @@ const getApiBase = () => {
 };
 
 let activeApiRequests = 0;
-function showPrecinctConnecting(show, text) {
+function showPrecinctConnecting(show, text, progressPercent = null) {
     const banner = document.getElementById('precinctConnectingBanner');
     const label = document.getElementById('precinctConnectingText');
-    if (!banner) return;
+    const bootScreen = document.getElementById('precinctBootScreen');
+    const bootText = document.getElementById('bootStatusText');
+    const bootBar = document.getElementById('bootProgressBar');
+    const retryContainer = document.getElementById('bootRetryContainer');
+
     if (show) {
         if (label && text) label.textContent = text;
-        banner.style.display = 'flex';
+        if (banner) banner.style.display = 'flex';
+        if (bootScreen) {
+            bootScreen.style.display = 'flex';
+            if (bootText && text) bootText.textContent = text;
+            if (bootBar && progressPercent !== null) bootBar.style.width = `${progressPercent}%`;
+            if (retryContainer) retryContainer.style.display = 'none';
+        }
     } else if (activeApiRequests <= 0) {
-        banner.style.display = 'none';
+        if (banner) banner.style.display = 'none';
+        if (bootScreen) {
+            if (bootBar) bootBar.style.width = '100%';
+            setTimeout(() => {
+                if (activeApiRequests <= 0) bootScreen.style.display = 'none';
+            }, 350);
+        }
     }
+}
+
+function showPrecinctBootError() {
+    const bootScreen = document.getElementById('precinctBootScreen');
+    const retryContainer = document.getElementById('bootRetryContainer');
+    const bootText = document.getElementById('bootStatusText');
+    if (bootScreen) bootScreen.style.display = 'flex';
+    if (retryContainer) retryContainer.style.display = 'block';
+    if (bootText) bootText.textContent = 'Precinct database connection timed out after multiple attempts.';
 }
 
 async function apiFetch(endpoint, options = {}, retries = 2) {
@@ -36,11 +61,12 @@ async function apiFetch(endpoint, options = {}, retries = 2) {
         const controller = new AbortController();
         // 14-second timeout per attempt to comfortably allow Render spin-up
         const timeoutMs = 14000;
+        const progressStep = attempt === 0 ? 30 : (attempt === 1 ? 65 : 85);
         const bannerTimer = setTimeout(() => {
             showPrecinctConnecting(true, attempt > 0 
                 ? `Connecting to Police Records (Server waking up... attempt ${attempt + 1}/${retries + 1})`
-                : 'Connecting to Police Records Mainframe (Waking up precinct server on Render...)...');
-        }, 1200);
+                : 'Connecting to Police Records Mainframe (Waking up precinct server on Render...)...', progressStep);
+        }, 1000);
 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const fetchOptions = { ...options, signal: controller.signal };
@@ -80,6 +106,7 @@ async function apiFetch(endpoint, options = {}, retries = 2) {
             if (attempt < retries) {
                 await delay(retryDelays[attempt]);
             } else {
+                showPrecinctBootError();
                 throw e;
             }
         }
@@ -100,6 +127,15 @@ if (!window.highestZ) window.highestZ = 100;
 // =========================================
 
 function init() {
+    const btnBootRetry = document.getElementById('btnBootRetry');
+    if (btnBootRetry) {
+        btnBootRetry.addEventListener('click', () => {
+            const retryContainer = document.getElementById('bootRetryContainer');
+            if (retryContainer) retryContainer.style.display = 'none';
+            showPrecinctConnecting(true, 'Retrying connection to precinct server...', 25);
+            loadCaseContext(caseId);
+        });
+    }
     initClock();
     initResizableWindows();
     initDraggableWindows();
@@ -959,6 +995,10 @@ async function loadCaseContext(id) {
         const wForm = document.getElementById('warrantFormId');
         const wTitle = document.getElementById('warrantHeaderTitle');
         const crimeType = (caseData.crimeType || 'FELONY').toUpperCase();
+        const hintEl = document.getElementById('activeCaseSqlHint');
+        if (hintEl) {
+            hintEl.textContent = `🔒 Scoped to Case #${displayNum} [ID: ${caseId}] — queries auto-isolate this case`;
+        }
 
         if (bTitle) bTitle.textContent = `Case #${displayNum}: ${caseData.title}`;
         if (bDiff) {
@@ -1532,6 +1572,14 @@ function getSqlDiagnosticHint(query, errorMsg) {
     const q = (query || '').toLowerCase().trim();
     const err = (errorMsg || '').toLowerCase();
 
+    // Syntax & delimiter errors
+    if ((q.match(/'/g) || []).length % 2 !== 0) {
+        return "Unclosed single quote (') detected in query string.";
+    }
+    if ((q.match(/\(/g) || []).length !== (q.match(/\)/g) || []).length) {
+        return "Mismatched parentheses: count of '(' does not match ')'.";
+    }
+
     // Table typos
     if (/\bfrom\s+suspect\b/.test(q)) return "Table name is plural: use 'FROM suspects'.";
     if (/\bfrom\s+(access_log|log|logs)\b/.test(q)) return "Table name is 'FROM access_logs'.";
@@ -1540,16 +1588,22 @@ function getSqlDiagnosticHint(query, errorMsg) {
     if (/\bfrom\s+(clue|clues|evidences)\b/.test(q)) return "Table name is 'FROM evidence'.";
     if (/\bfrom\s+(timeline|events)\b/.test(q)) return "Table name is 'FROM timeline_events'.";
     if (/\bfrom\s+(scene|scenes)\b/.test(q)) return "Table name is 'FROM crime_scenes'.";
+    if (/\bfrom\s+victim\b/.test(q)) return "Table name is plural: use 'FROM victims'.";
+
+    // Column typos in specific tables
+    if (q.includes('phone_records') && q.includes('suspect_id') && !q.includes('caller_') && !q.includes('receiver_')) {
+        return "Note: 'phone_records' uses 'caller_suspect_id' and 'receiver_suspect_id' rather than 'suspect_id'.";
+    }
+
+    // Missing JOIN condition
+    if (q.includes('join') && !q.includes('on')) {
+        return "Missing JOIN condition: JOIN clause requires an ON condition (e.g. 'JOIN suspects s ON a.suspect_id = s.suspect_id').";
+    }
 
     // Filter hints
     const currentId = caseId || 1;
     if (!q.includes('case_id')) {
         return `Remember to filter by active case: add 'WHERE case_id = ${currentId}' to isolate relevant incident records.`;
-    }
-
-    // Missing JOIN condition
-    if (q.includes('join') && !q.includes('on')) {
-        return "JOIN clause requires an ON condition (e.g. 'JOIN suspects s ON a.suspect_id = s.suspect_id').";
     }
 
     // Misplaced columns
@@ -1565,6 +1619,29 @@ function getSqlDiagnosticHint(query, errorMsg) {
     }
 
     return null;
+}
+
+
+// Auto-scope queries to active case if case_id predicate is missing
+function autoScopeQuery(query, activeCaseId) {
+    if (!query || !activeCaseId) return query;
+    if (/\bcase_id\b/i.test(query)) return query;
+
+    const clauseRegex = /\b(GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)\b/i;
+    const match = query.match(clauseRegex);
+
+    let mainPart = query;
+    let trailingPart = '';
+    if (match) {
+        mainPart = query.substring(0, match.index).trim();
+        trailingPart = ' ' + query.substring(match.index).trim();
+    }
+
+    if (/\bWHERE\b/i.test(mainPart)) {
+        return `${mainPart} AND case_id = ${activeCaseId}${trailingPart}`;
+    } else {
+        return `${mainPart} WHERE case_id = ${activeCaseId}${trailingPart}`;
+    }
 }
 
 const btnExecute = document.getElementById('executeQuery');
@@ -1658,8 +1735,8 @@ if (btnExecute) {
             return;
         }
 
-        // Auto-translate sequential case number (e.g. case_id = 2) to actual DB caseId (e.g. 30001)
-        let queryToSend = query;
+        // Auto-scope query to active case if missing, or translate sequential number
+        let queryToSend = autoScopeQuery(query, caseId);
         if (window.activeCaseIndex && Number(window.activeCaseIndex) !== Number(caseId)) {
             queryToSend = queryToSend.replace(new RegExp(`\\bcase_id\\s*=\\s*0*${window.activeCaseIndex}\\b`, 'gi'), `case_id = ${caseId}`);
         }
@@ -2239,26 +2316,45 @@ function showCaseDebrief(data, queryCount) {
     const chainEl = document.getElementById('debriefEvidenceChain');
     const timeEl = document.getElementById('statTimeElapsed');
     const attemptsEl = document.getElementById('statIncorrectAttempts');
+    const xpEl = document.getElementById('statXpEarned');
+    const titleEl = document.getElementById('debriefCaseTitle');
 
-    if (queriesEl) queriesEl.textContent = String(queryCount || 1);
+    if (titleEl && window.currentCaseData) {
+        titleEl.textContent = `Case #${window.activeCaseIndex || caseId}: ${window.currentCaseData.title}`;
+    }
 
-    const elapsedMinutes = Math.max(1, Math.round((Date.now() - sessionStartTime) / 60000));
-    if (timeEl) timeEl.textContent = `${elapsedMinutes}m`;
-    if (attemptsEl) attemptsEl.textContent = String(sessionIncorrectAccusations);
+    if (queriesEl) queriesEl.textContent = String(queryCount || sessionQueriesCount || 1);
+
+    const totalSecs = Math.max(1, Math.floor((Date.now() - sessionStartTime) / 1000));
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+    if (timeEl) timeEl.textContent = timeStr;
+    if (attemptsEl) attemptsEl.textContent = String(sessionIncorrectAccusations || 0);
 
     let rank = 'S';
     let title = '⭐ MASTER DETECTIVE';
-    if (sessionIncorrectAccusations > 0 || queryCount > 6) {
-        rank = 'A';
-        title = '🎖️ SENIOR DETECTIVE';
-    }
-    if (sessionIncorrectAccusations > 1 || queryCount > 12) {
+    let awardedXp = 350;
+
+    if (sessionIncorrectAccusations > 2 || queryCount > 20) {
+        rank = 'C';
+        title = '📋 PROBATIONARY';
+        awardedXp = 75;
+    } else if (sessionIncorrectAccusations > 1 || queryCount > 12) {
         rank = 'B';
         title = '🔍 INVESTIGATOR';
+        awardedXp = 150;
+    } else if (sessionIncorrectAccusations > 0 || queryCount > 6 || totalSecs > 300) {
+        rank = 'A';
+        title = '🎖️ SENIOR DETECTIVE';
+        awardedXp = 250;
     }
 
     if (rankEl) rankEl.textContent = rank;
     if (badgeStamp) badgeStamp.textContent = title;
+
+    const curXp = parseInt(localStorage.getItem('qc_player_xp') || '0', 10);
+    if (xpEl) xpEl.textContent = `+${awardedXp} (${curXp} Total)`;
 
     if (timelineList) {
         timelineList.innerHTML = `
@@ -2513,7 +2609,8 @@ const DB_SCHEMA = {
     transactions: ['transaction_id', 'suspect_id', 'amount', 'transaction_date', 'description', 'case_id'],
     phone_records: ['record_id', 'caller_suspect_id', 'receiver_suspect_id', 'call_time', 'call_duration', 'case_id'],
     timeline_events: ['event_id', 'event_time', 'description', 'location', 'case_id'],
-    crime_scenes: ['scene_id', 'name', 'location', 'description', 'case_id']
+    crime_scenes: ['scene_id', 'name', 'location', 'description', 'case_id'],
+    victims: ['victim_id', 'name', 'age', 'occupation', 'cause_of_crime', 'case_id']
 };
 
 function insertTextAtCursor(el, text) {

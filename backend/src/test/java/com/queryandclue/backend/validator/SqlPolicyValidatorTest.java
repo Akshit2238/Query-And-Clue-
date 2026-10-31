@@ -25,6 +25,18 @@ class SqlPolicyValidatorTest {
     }
 
     @Test
+    void validSelectVictimsWithCaseScope() {
+        var result = validator.validate("SELECT * FROM victims WHERE case_id = 1", 1);
+        assertTrue(result.isValid());
+    }
+
+    @Test
+    void validSelectCrimeScenesWithCaseScope() {
+        var result = validator.validate("SELECT * FROM crime_scenes WHERE case_id = 1", 1);
+        assertTrue(result.isValid());
+    }
+
+    @Test
     void validSelectWithJoin() {
         var result = validator.validate(
                 "SELECT s.name, e.description FROM suspects s JOIN evidence e ON s.case_id = e.case_id WHERE s.case_id = 1",

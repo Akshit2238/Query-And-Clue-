@@ -1655,3 +1655,31 @@ textarea.sunken-panel, input.sunken-panel, select.sunken-panel {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
+
+
+/* =========================================
+   RENDER COLD-START BOOT SCREEN
+   ========================================= */
+
+.precinct-boot-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 26, 0.88);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000;
+}
+
+.boot-window {
+    background: #c0c0c0;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.5), inset 1px 1px #ffffff, inset -1px -1px #808080;
+    border: 2px solid;
+    border-color: #dfdfdf #404040 #404040 #dfdfdf;
+}
+
+.boot-progress-bar {
+    border: 2px solid;
+    border-color: #808080 #ffffff #ffffff #808080;
+}

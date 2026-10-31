@@ -32,6 +32,17 @@ public class SqlPolicyValidator {
             return ValidationResult.invalid("Query exceeds maximum length of " + MAX_QUERY_LENGTH);
         }
 
+        String lowerQuery = query.toLowerCase();
+        if (lowerQuery.contains("sleep(") || lowerQuery.contains("benchmark(") ||
+            lowerQuery.contains("into outfile") || lowerQuery.contains("into dumpfile") ||
+            lowerQuery.contains("information_schema")) {
+            return ValidationResult.invalid("Restricted SQL command or function detected");
+        }
+
+        if (lowerQuery.contains("is_guilty") || lowerQuery.contains("culprit_suspect_id")) {
+            return ValidationResult.invalid("Access to restricted solution columns is forbidden");
+        }
+
         net.sf.jsqlparser.statement.Statements statements;
         try {
             statements = CCJSqlParserUtil.parseStatements(query);

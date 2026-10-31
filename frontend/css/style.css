@@ -1,4 +1,4 @@
-﻿/* =========================================
+/* =========================================
    QUERY & CLUE â€” RETRO 90S OS DESIGN SYSTEM
    ========================================= */
 
@@ -1802,4 +1802,132 @@ textarea.sunken-panel, input.sunken-panel, select.sunken-panel {
 }
 .inbox-item.unread {
     font-weight: bold;
+}
+
+/* ===== STEP 4: MOBILE RESPONSIVE ===== */
+#mobileNav {
+    display: none;
+}
+@media (max-width: 768px) {
+    #desktop {
+        overflow: hidden;
+        height: calc(100vh - 88px);
+    }
+    .retro-window {
+        position: fixed !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: calc(100vh - 88px) !important;
+        top: 0 !important;
+        left: 0 !important;
+        border-radius: 0;
+        margin: 0;
+        z-index: 100;
+    }
+    .retro-window .window-body {
+        max-height: calc(100vh - 128px);
+        overflow-y: auto;
+    }
+    #taskbar {
+        display: none;
+    }
+    .icon-bar, .cop-mascot {
+        display: none !important;
+    }
+    #mobileNav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 48px;
+        background: #c0c0c0;
+        border-top: 2px solid #808080;
+        justify-content: space-around;
+        align-items: center;
+        z-index: 9999;
+        padding: 0 4px;
+        box-shadow: 0 -2px 6px rgba(0,0,0,0.3);
+    }
+    .mobile-nav-btn {
+        flex: 1;
+        height: 40px;
+        background: #d4d0c8;
+        border: 2px solid;
+        border-color: #fff #808080 #808080 #fff;
+        font-size: 10px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        font-family: inherit;
+        color: #000;
+        padding: 2px;
+    }
+    .mobile-nav-btn:active {
+        border-color: #808080 #fff #fff #808080;
+    }
+}
+
+/* ===== STEP 4: REDUCE EFFECTS / ACCESSIBILITY ===== */
+.reduce-effects .crt-overlay,
+.reduce-effects .scanlines,
+.reduce-effects .crt-effect,
+.reduce-effects [class*="scanline"] {
+    display: none !important;
+}
+.reduce-effects .retro-window,
+.reduce-effects .retro-btn,
+.reduce-effects .icon-btn {
+    animation: none !important;
+    transition: none !important;
+}
+.reduce-effects .clue-card,
+.reduce-effects .suspect-card {
+    animation: none !important;
+}
+
+/* Focus ring for keyboard navigation */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid #0078d7;
+    outline-offset: 2px;
+}
+
+/* ===== STEP 4: EVIDENCE UNLOCK PULSE ANIMATION ===== */
+@keyframes evidenceFoundPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+    70%  { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+.clue-card-unlocked {
+    animation: evidenceFoundPulse 0.9s ease-out;
+}
+
+/* ===== STEP 4: SQL AUTOCOMPLETE DROPDOWN ===== */
+#sqlAutocompleteDropdown {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #808080;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    max-height: 140px;
+    overflow-y: auto;
+    z-index: 9999;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    min-width: 160px;
+}
+.sql-ac-item {
+    padding: 3px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.sql-ac-item:hover,
+.sql-ac-item.active {
+    background: #000080;
+    color: #fff;
 }

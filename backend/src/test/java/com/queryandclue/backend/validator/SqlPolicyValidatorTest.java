@@ -172,4 +172,26 @@ class SqlPolicyValidatorTest {
                 1);
         assertTrue(result.isValid());
     }
+    @Test
+    void invalidSleepFunction() {
+        var result = validator.validate("SELECT SLEEP(5) FROM suspects WHERE case_id = 1", 1);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("Restricted"));
+    }
+
+    @Test
+    void invalidInformationSchema() {
+        var result = validator.validate(
+                "SELECT table_name FROM information_schema.tables WHERE case_id = 1", 1);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("Restricted") || result.getErrorMessage().contains("not allowed"));
+    }
+
+    @Test
+    void invalidIsGuiltyColumn() {
+        var result = validator.validate("SELECT is_guilty FROM suspects WHERE case_id = 1", 1);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("restricted"));
+    }
+
 }

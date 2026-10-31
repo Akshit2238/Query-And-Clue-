@@ -148,6 +148,8 @@ function init() {
     initQueryHistory();
     initMusicPlayer();
     initSettings();
+    initReduceEffects();
+    initSqlAutocomplete();
     initBrowser();
     initDetectiveBadge();
     initGuide();
@@ -891,6 +893,132 @@ function initSettings() {
         });
     }
 }
+
+// ===== STEP 4: REDUCE EFFECTS TOGGLE =====
+function initReduceEffects() {
+    const chk = document.getElementById('chkReduceEffects');
+    if (!chk) return;
+    const saved = localStorage.getItem('qc_reduce_effects') === 'true';
+    chk.checked = saved;
+    if (saved) document.body.classList.add('reduce-effects');
+    chk.addEventListener('change', () => {
+        document.body.classList.toggle('reduce-effects', chk.checked);
+        localStorage.setItem('qc_reduce_effects', String(chk.checked));
+    });
+}
+
+// ===== STEP 4: SQL AUTOCOMPLETE =====
+function initSqlAutocomplete() {
+    const input = document.getElementById('sqlQuery');
+    if (!input) return;
+
+    const SQL_KEYWORDS = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'ON', 'GROUP BY', 'ORDER BY',
+        'HAVING', 'LIMIT', 'AND', 'OR', 'NOT', 'IN', 'LIKE', 'COUNT', 'SUM', 'AVG', 'MIN', 'MAX',
+        'DISTINCT', 'AS', 'LEFT JOIN', 'INNER JOIN', 'case_id'];
+    const tableNames = typeof DB_SCHEMA !== 'undefined' ? Object.keys(DB_SCHEMA) : [];
+    const colNames = typeof DB_SCHEMA !== 'undefined'
+        ? [...new Set(Object.values(DB_SCHEMA).flat())]
+        : [];
+    const ALL_SUGGESTIONS = [...new Set([...SQL_KEYWORDS, ...tableNames, ...colNames])];
+
+    let dropdown = null;
+    let activeSuggestions = [];
+    let activeIndex = -1;
+
+    function removeDropdown() {
+        if (dropdown) { dropdown.remove(); dropdown = null; }
+        activeSuggestions = []; activeIndex = -1;
+    }
+
+    function showDropdown(suggestions, caretPos) {
+        removeDropdown();
+        if (!suggestions.length) return;
+        activeSuggestions = suggestions;
+        activeIndex = 0;
+
+        dropdown = document.createElement('div');
+        dropdown.id = 'sqlAutocompleteDropdown';
+        renderDropdown();
+
+        const rect = input.getBoundingClientRect();
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.top = (rect.bottom + window.scrollY) + 'px';
+        document.body.appendChild(dropdown);
+    }
+
+    function renderDropdown() {
+        if (!dropdown) return;
+        dropdown.innerHTML = '';
+        activeSuggestions.slice(0, 8).forEach((s, i) => {
+            const item = document.createElement('div');
+            item.className = 'sql-ac-item' + (i === activeIndex ? ' active' : '');
+            item.textContent = s;
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                applySuggestion(s);
+            });
+            dropdown.appendChild(item);
+        });
+    }
+
+    function getCurrentWord() {
+        const val = input.value;
+        const pos = input.selectionStart;
+        const before = val.slice(0, pos);
+        const match = before.match(/(\w+)$/);
+        return match ? match[1] : '';
+    }
+
+    function applySuggestion(suggestion) {
+        const val = input.value;
+        const pos = input.selectionStart;
+        const before = val.slice(0, pos);
+        const after = val.slice(pos);
+        const wordMatch = before.match(/(\w+)$/);
+        const wordStart = wordMatch ? pos - wordMatch[1].length : pos;
+        input.value = val.slice(0, wordStart) + suggestion + (after.startsWith(' ') ? '' : ' ') + after;
+        const newPos = wordStart + suggestion.length + 1;
+        input.setSelectionRange(newPos, newPos);
+        removeDropdown();
+        input.focus();
+    }
+
+    input.addEventListener('keyup', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Tab'].includes(e.key)) return;
+        const word = getCurrentWord();
+        if (word.length < 2) { removeDropdown(); return; }
+        const upper = word.toUpperCase();
+        const matches = ALL_SUGGESTIONS.filter(s =>
+            s.toUpperCase().startsWith(upper) && s.toUpperCase() !== upper
+        );
+        if (matches.length) showDropdown(matches); else removeDropdown();
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (!dropdown) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, Math.min(activeSuggestions.length, 8) - 1);
+            renderDropdown();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            renderDropdown();
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            if (activeSuggestions[activeIndex]) {
+                e.preventDefault();
+                applySuggestion(activeSuggestions[activeIndex]);
+            }
+        } else if (e.key === 'Escape') {
+            removeDropdown();
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target !== input && e.target !== dropdown) removeDropdown();
+    });
+}
+
 
 // Web Browser Window Navigation
 function initBrowser() {

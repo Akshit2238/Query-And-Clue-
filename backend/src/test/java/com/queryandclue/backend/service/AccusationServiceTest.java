@@ -84,3 +84,4 @@ class AccusationServiceTest {
         assertThrows(IllegalArgumentException.class, () -> accusationService.submitAccusation(999, req));
     }
 }
+

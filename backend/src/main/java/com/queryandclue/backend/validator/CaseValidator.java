@@ -364,6 +364,22 @@ public class CaseValidator {
         }
 
 
+        // =========================
+        // 11. SOLVABILITY & CULPRIT VERIFICATION
+        // =========================
+        String cleanCulprit = culpritName.trim().toLowerCase();
+        boolean culpritInAccessLogs = generatedCase.getAccessLogs() != null && generatedCase.getAccessLogs().stream()
+                .anyMatch(l -> l != null && cleanCulprit.equalsIgnoreCase(l.getSuspectName()));
+        boolean culpritInTransactions = generatedCase.getTransactions() != null && generatedCase.getTransactions().stream()
+                .anyMatch(t -> t != null && cleanCulprit.equalsIgnoreCase(t.getSuspectName()));
+        boolean culpritInPhoneRecords = generatedCase.getPhoneRecords() != null && generatedCase.getPhoneRecords().stream()
+                .anyMatch(p -> p != null && (cleanCulprit.equalsIgnoreCase(p.getCallerSuspectName()) || cleanCulprit.equalsIgnoreCase(p.getReceiverSuspectName())));
+
+        // Solvability requirement: culprit must appear in at least one forensic record so SQL queries can solve the case
+        if (!culpritInAccessLogs && !culpritInTransactions && !culpritInPhoneRecords) {
+            return false;
+        }
+
         return true;
     }
 

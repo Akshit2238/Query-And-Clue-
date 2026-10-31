@@ -57,7 +57,10 @@ public class AdminController {
         return key != null && adminKey.equals(key.trim());
     }
 
-    /** Unlimited case generation — no rate limit */
+    private static final java.util.concurrent.atomic.AtomicLong LAST_GEN_TIMESTAMP = new java.util.concurrent.atomic.AtomicLong(0);
+    private static final long MIN_GEN_INTERVAL_MS = 3000;
+
+    /** Rate-limited case generation */
     @PostMapping("/generate")
     public ResponseEntity<?> adminGenerate(
             @RequestHeader(value = "X-Admin-Key", required = false) String key) {
@@ -66,6 +69,14 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Unauthorized"));
         }
+
+        long now = System.currentTimeMillis();
+        long last = LAST_GEN_TIMESTAMP.get();
+        if (now - last < MIN_GEN_INTERVAL_MS) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("error", "Rate limit exceeded. Please wait 3 seconds before generating another case."));
+        }
+        LAST_GEN_TIMESTAMP.set(now);
 
         for (int attempt = 1; attempt <= 3; attempt++) {
             GeneratedCase generatedCase = aiCaseGeneratorService.generateCase();

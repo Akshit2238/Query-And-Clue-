@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Query and Clue — Minor Crimes OS</title>
-    <link rel="stylesheet" href="css/style.css?v=7.5">
+    <link rel="stylesheet" href="css/style.css?v=8.0">
     <script>
         // Route new sessions to Welcome / Chapter Select screen first
         if (!sessionStorage.getItem('qc_entered') && !window.location.search.includes('desktop')) {
@@ -108,6 +108,14 @@
                         A critical financial ledger containing proprietary corporate accounting records has vanished from a secured executive office. The primary financial director was found injured, and multiple corporate executives claim inconsistent alibis. 
                     </div>
 
+                    <div class="sql-concept-card" id="briefingSqlConceptCard" style="background:#f0fdf4;border:1px solid #86efac;padding:8px 12px;margin:10px 0;border-radius:2px;font-size:11px;">
+                        <div style="font-weight:bold;color:#166534;margin-bottom:2px;" id="conceptCardTitle">💡 SQL Concept Focus: SELECT &amp; WHERE (Difficulty: EASY)</div>
+                        <div style="color:#1e293b;line-height:1.4;margin-bottom:4px;" id="conceptCardDesc">Filter suspect movements and timestamps using WHERE predicates to isolate suspect opportunities.</div>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <code style="background:#fff;border:1px solid #cbd5e1;padding:2px 6px;font-size:10px;color:#0369a1;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="conceptCardSql">SELECT * FROM access_logs WHERE room = 'Executive Office';</code>
+                            <button type="button" class="retro-btn" id="btnPasteConceptSql" style="font-size:10px;padding:2px 8px;font-weight:bold;">📋 Try Template</button>
+                        </div>
+                    </div>
                     <div class="briefing-tasks">
                         <h4>Mandatory Investigative Objectives:</h4>
                         <ul style="list-style:none;padding-left:0;margin:6px 0;">
@@ -261,6 +269,17 @@
                 <span>music</span>
             </button>
 
+            <button class="icon-btn" id="btn-icon-leaderboard" data-window="win-leaderboard" onclick="openWindow('win-leaderboard')">
+                <svg class="icon-svg" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="16" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+                    <path d="M12 12 h12 v6 c0 4 -3 7 -6 7 s-6 -3 -6 -7 z" fill="#f59e0b"/>
+                    <path d="M16 25 h4 v4 h-4 z" fill="#d97706"/>
+                    <path d="M14 29 h8 v2 h-8 z" fill="#b45309"/>
+                    <path d="M10 14 h-2 c0 3 2 4 4 4" fill="none" stroke="#d97706" stroke-width="1.5"/>
+                    <path d="M26 14 h2 c0 3 -2 4 -4 4" fill="none" stroke="#d97706" stroke-width="1.5"/>
+                </svg>
+                <span>scores</span>
+            </button>
             <button class="icon-btn" id="btn-icon-settings" data-window="win-settings" onclick="openWindow('win-settings')">
                 <svg class="icon-svg" viewBox="0 0 36 36">
                     <circle cx="23" cy="22" r="7.5" fill="#94a3b8" stroke="#000" stroke-width="1.5"/>
@@ -756,6 +775,10 @@
                             <div class="stat-box-num" id="statHintsUsed">0</div>
                             <div class="stat-box-label">Hints Used</div>
                         </div>
+                        <div class="stat-box" style="background:#eff6ff;border:1px solid #bfdbfe;">
+                            <div class="stat-box-num" id="statTotalScore" style="color:#1d4ed8;">1000</div>
+                            <div class="stat-box-label" style="color:#1e40af;font-weight:bold;">Final Score</div>
+                        </div>
                         <div class="stat-box">
                             <div class="stat-box-num" id="statEfficiencyRank">S</div>
                             <div class="stat-box-label">Rank</div>
@@ -979,7 +1002,44 @@
             </div>
         </div>
 
-<!-- WINDOW 8: MESSAGES -->
+
+        <!-- WINDOW: LEADERBOARD & PRECINCT HALL OF FAME -->
+        <div class="retro-window hidden" id="win-leaderboard" style="width: 540px; max-width: 95vw; top: 50px; left: 170px;">
+            <div class="titlebar" style="background: linear-gradient(90deg, #b45309, #d97706);">
+                <div class="titlebar-text">
+                    <span>🏆 LZPD Precinct Hall of Fame &amp; Daily Leaderboard</span>
+                </div>
+                <div class="titlebar-controls">
+                    <button class="win-btn btn-min">_</button>
+                    <button class="win-btn btn-close" data-target="win-leaderboard">X</button>
+                </div>
+            </div>
+            <div class="window-body" style="padding: 10px; background: #c0c0c0;">
+                <div style="background:#fffbeb;border:1px solid #fde68a;padding:6px 10px;margin-bottom:8px;font-size:11px;color:#92400e;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <strong>📅 TODAY'S FEATURED CASE:</strong> <span id="dailyCaseTitle">Loading...</span>
+                    </div>
+                    <button type="button" class="retro-btn" id="btnPlayDailyCase" style="font-size:10px;font-weight:bold;padding:2px 8px;background:#fef3c7;border-color:#f59e0b;color:#92400e;">Investigate (+50 XP)</button>
+                </div>
+                <table class="retro-table" style="width: 100%; font-size: 11px;">
+                    <thead>
+                        <tr>
+                            <th style="width:28px;">#</th>
+                            <th>Detective</th>
+                            <th>Rank</th>
+                            <th>Cases Solved</th>
+                            <th>Total XP</th>
+                            <th>Best Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardTbody">
+                        <!-- Dynamically filled -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- WINDOW 8: MESSAGES -->
         <div class="retro-window hidden" id="win-messages">
             <div class="titlebar">
                 <div class="titlebar-text">
@@ -1097,6 +1157,9 @@
         <div id="activeCaseLabel" style="font-size: 11px; font-weight: bold; color: #000080; background: #ffffff; border-top: 1px solid #808080; border-left: 1px solid #808080; border-bottom: 1px solid #fff; border-right: 1px solid #fff; padding: 2px 8px; margin-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;">
             Case #1: The Midnight Ledger
         </div>
+        <div id="playerStatusPill" style="font-size: 11px; font-weight: bold; color: #1e3a8a; background: #e0f2fe; border: 1px solid #7dd3fc; padding: 2px 8px; margin-right: 6px; white-space: nowrap; border-radius: 2px;" title="Detective Level & Total XP">
+            🕵️ Miller • Lvl 1 (0 XP)
+        </div>
         <div id="detectiveBadgeTray" title="Click to log off" onclick="if(confirm('Log off from Minor Crimes OS?')) { localStorage.removeItem('qc_detective_name'); sessionStorage.removeItem('qc_entered'); window.location.href='login.html'; }" style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: bold; padding: 2px 8px; margin-right: 4px; background: #e2e8f0; border-top: 1px solid #808080; border-left: 1px solid #808080; border-bottom: 1px solid #fff; border-right: 1px solid #fff;">
             <span id="badgeAvatar">🕵️</span>
             <span id="badgeName" style="color: #000080;">Detective</span>
@@ -1131,8 +1194,8 @@
         <ellipse cx="75" cy="85" rx="8" ry="6" fill="#d97706" stroke="#000" stroke-width="2"/>
     </svg>
 
-    <script src="js/config.js?v=7.5"></script>
-    <script src="js/app.js?v=7.5"></script>
+    <script src="js/config.js?v=8.0"></script>
+    <script src="js/app.js?v=8.0"></script>
     <script>
     (function() {
         if (typeof window.initResizableWindows === 'function') {

@@ -165,6 +165,8 @@ function init() {
     if (typeof initEvidenceConfrontation === 'function') initEvidenceConfrontation();
 
     loadCaseContext(caseId);
+    if (typeof updatePlayerProfileUI === 'function') updatePlayerProfileUI();
+    if (typeof initDailyCaseAndLeaderboard === 'function') initDailyCaseAndLeaderboard();
 }
 
 function initGuide() {
@@ -1019,6 +1021,7 @@ async function loadCaseContext(id) {
         if (bType) bType.textContent = `TYPE: ${crimeType}`;
         if (bDate) bDate.textContent = `DATE: ${caseData.crimeDate || '2026-09-10'}`;
         if (bNarrative && caseData.description) bNarrative.textContent = caseData.description;
+        if (typeof updateSqlConceptCard === 'function') updateSqlConceptCard(caseData);
         if (wForm) {
             wForm.textContent = `FORM MC-${caseId}-W841 - OFFICIAL APPREHENSION ORDER`;
             apiFetch(`/cases/${caseId}/warrant`)
@@ -1440,9 +1443,19 @@ async function loadCaseList() {
             div.style.cssText = 'padding:8px 10px;border:1px solid var(--win-border-dark);background:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
             const isCurrent = Number(c.caseId) === Number(caseId);
             const displayNum = index + 1;
+
+            const progress = (typeof getPlayerProgress === 'function') ? getPlayerProgress() : { solvedCases: [], caseRanks: {} };
+            const isSolved = progress.solvedCases.includes(Number(c.caseId));
+            const solvedRank = progress.caseRanks[c.caseId] || 'S';
+            const dailyIdx = (typeof getDailyCaseIndex === 'function') ? getDailyCaseIndex(cases.length) : 0;
+            const isDaily = index === dailyIdx;
+
+            const solvedBadge = isSolved ? `<span style="margin-left:6px;font-size:9.5px;background:#dcfce7;border:1px solid #86efac;color:#166534;padding:1px 5px;border-radius:2px;font-weight:bold;">✓ SOLVED [Rank ${solvedRank}]</span>` : '';
+            const dailyBadge = isDaily ? `<span style="margin-left:6px;font-size:9.5px;background:#fef3c7;border:1px solid #f59e0b;color:#92400e;padding:1px 5px;border-radius:2px;font-weight:bold;">📅 DAILY</span>` : '';
+
             div.innerHTML = `
                 <div>
-                    <strong>Case #${displayNum}: ${esc(c.title)}</strong>
+                    <strong>Case #${displayNum}: ${esc(c.title)}</strong>${solvedBadge}${dailyBadge}
                     <div style="font-size:10px;color:#555;margin-top:2px;">${esc(c.difficulty || 'Normal')} · ${esc(c.crimeType || '')}</div>
                 </div>
                 <button class="retro-btn btn-select-case" data-case-id="${c.caseId}" style="font-size:11px;padding:3px 12px;min-width:68px;font-weight:${isCurrent ? 'bold' : 'normal'};" ${isCurrent ? 'disabled' : ''}>
@@ -2375,9 +2388,43 @@ function showCaseDebrief(data, queryCount) {
     if (timeEl) timeEl.textContent = timeStr;
     if (attemptsEl) attemptsEl.textContent = String(sessionIncorrectAccusations || 0);
 
+    const totalQueries = queryCount || sessionQueriesCount || 1;
+    const totalDenied = sessionIncorrectAccusations || 0;
+    const hintsCount = window.caseHintsUsed || 0;
+    const hintsPen = window.caseHintsPenalty || 0;
+
+    // Multi-factor Score: Base 1000 - queries beyond 4 - time beyond 3m - wrong warrants - hints
+    let calculatedScore = 1000;
+    calculatedScore -= Math.max(0, (totalQueries - 4) * 25);
+    calculatedScore -= Math.max(0, Math.floor(totalSecs / 60) * 10);
+    calculatedScore -= (totalDenied * 150);
+    calculatedScore -= (hintsPen * 80);
+    calculatedScore = Math.max(100, calculatedScore);
+
+    const scoreEl = document.getElementById('statTotalScore');
+    if (scoreEl) scoreEl.textContent = String(calculatedScore);
+
     let rank = 'S';
     let title = '⭐ MASTER DETECTIVE';
     let awardedXp = 350;
+
+    if (calculatedScore < 450 || hintsPen >= 5 || totalDenied >= 3) {
+        rank = 'C';
+        title = '📋 PROBATIONARY';
+        awardedXp = 75;
+    } else if (calculatedScore < 650 || totalDenied >= 2 || totalQueries > 14) {
+        rank = 'B';
+        title = '🔍 INVESTIGATOR';
+        awardedXp = 150;
+    } else if (calculatedScore < 850 || totalDenied >= 1 || hintsCount >= 1 || totalQueries > 6) {
+        rank = 'A';
+        title = '🎖️ SENIOR DETECTIVE';
+        awardedXp = 250;
+    }
+
+    if (typeof savePlayerCaseSolve === 'function') {
+        savePlayerCaseSolve(caseId, rank, calculatedScore, awardedXp);
+    }
 
     if (sessionIncorrectAccusations > 2 || queryCount > 20) {
         rank = 'C';
@@ -3385,4 +3432,182 @@ function viewVanceMemo(memo) {
 
     const badge = document.getElementById('msgUnreadBadge');
     if (badge) badge.style.display = 'none';
+}
+
+
+
+// =========================================
+// STEP 3: PROGRESSION, REPLAY & LEADERBOARD
+// =========================================
+
+// --- 1. SQL CONCEPT MINI-TUTORIALS ---
+const SQL_DIFFICULTY_CONCEPTS = {
+    EASY: {
+        concept: "SELECT & WHERE Filters",
+        desc: "Filter access logs and incident timestamps to isolate who was in the critical area.",
+        template: "SELECT * FROM access_logs WHERE room = 'Executive Office' ORDER BY access_time;"
+    },
+    MEDIUM: {
+        concept: "INNER JOIN Suspects & Logs",
+        desc: "Join suspects table with access_logs or transactions on suspect_id to link names with forensic activity.",
+        template: "SELECT s.name, s.occupation, a.room, a.access_time FROM suspects s JOIN access_logs a ON s.suspect_id = a.suspect_id;"
+    },
+    HARD: {
+        concept: "GROUP BY, HAVING & Aggregations",
+        desc: "Detect suspicious multi-room sweeps or financial totals exceeding typical operational thresholds.",
+        template: "SELECT suspect_id, COUNT(*) AS room_swipes FROM access_logs GROUP BY suspect_id HAVING COUNT(*) > 1;"
+    }
+};
+
+function updateSqlConceptCard(caseData) {
+    const cardTitle = document.getElementById('conceptCardTitle');
+    const cardDesc = document.getElementById('conceptCardDesc');
+    const cardSql = document.getElementById('conceptCardSql');
+    const btnPaste = document.getElementById('btnPasteConceptSql');
+
+    if (!caseData) return;
+    const diff = (caseData.difficulty || 'Normal').toUpperCase();
+    const config = SQL_DIFFICULTY_CONCEPTS[diff] || SQL_DIFFICULTY_CONCEPTS.EASY;
+
+    if (cardTitle) cardTitle.textContent = `💡 SQL Concept Focus: ${config.concept} (Difficulty: ${diff})`;
+    if (cardDesc) cardDesc.textContent = config.desc;
+    if (cardSql) cardSql.textContent = config.template;
+
+    if (btnPaste) {
+        btnPaste.onclick = () => {
+            const sqlInput = document.getElementById('sqlQuery');
+            if (sqlInput) sqlInput.value = config.template;
+            bringToFront('win-search');
+            playSfx('query');
+            showDetectiveToast(`📋 Pasted ${config.concept} template into Search!`);
+        };
+    }
+}
+
+// --- 2. PERSISTENT PROGRESS & PLAYER PROFILE ---
+function getPlayerProgress() {
+    let xp = parseInt(localStorage.getItem('qc_player_xp') || '0', 10);
+    let solvedCases = [];
+    let caseRanks = {};
+    try {
+        solvedCases = JSON.parse(localStorage.getItem('qc_solved_cases') || '[]');
+        caseRanks = JSON.parse(localStorage.getItem('qc_case_ranks') || '{}');
+    } catch (e) {}
+    return { xp, solvedCases, caseRanks };
+}
+
+function updatePlayerProfileUI() {
+    const { xp, solvedCases } = getPlayerProgress();
+    const level = Math.floor(xp / 400) + 1;
+    const pill = document.getElementById('playerStatusPill');
+    if (pill) {
+        pill.textContent = `🕵️ Miller • Lvl ${level} (${xp} XP)`;
+    }
+}
+
+function savePlayerCaseSolve(solvedCaseId, rank, score, awardedXp) {
+    let { xp, solvedCases, caseRanks } = getPlayerProgress();
+    xp += awardedXp;
+    if (!solvedCases.includes(Number(solvedCaseId))) {
+        solvedCases.push(Number(solvedCaseId));
+    }
+    caseRanks[solvedCaseId] = rank;
+
+    localStorage.setItem('qc_player_xp', String(xp));
+    localStorage.setItem('qc_solved_cases', JSON.stringify(solvedCases));
+    localStorage.setItem('qc_case_ranks', JSON.stringify(caseRanks));
+
+    // Save to local leaderboard
+    try {
+        let board = JSON.parse(localStorage.getItem('qc_leaderboard_runs') || '[]');
+        board.unshift({
+            date: new Date().toLocaleDateString(),
+            caseId: solvedCaseId,
+            caseTitle: (window.currentCaseData && window.currentCaseData.title) || `Case #${solvedCaseId}`,
+            rank: rank,
+            score: score,
+            xp: awardedXp
+        });
+        if (board.length > 10) board.pop();
+        localStorage.setItem('qc_leaderboard_runs', JSON.stringify(board));
+    } catch (e) {}
+
+    updatePlayerProfileUI();
+    renderLeaderboard();
+}
+
+// --- 3. DAILY FEATURED CASE & LEADERBOARD ---
+function getDailyCaseIndex(totalCases) {
+    if (!totalCases || totalCases <= 0) return 0;
+    const today = new Date().toISOString().slice(0, 10);
+    let hash = 0;
+    for (let i = 0; i < today.length; i++) {
+        hash = (hash << 5) - hash + today.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash) % totalCases;
+}
+
+function initDailyCaseAndLeaderboard() {
+    renderLeaderboard();
+}
+
+function renderLeaderboard() {
+    const tbody = document.getElementById('leaderboardTbody');
+    const dailyTitle = document.getElementById('dailyCaseTitle');
+    const btnPlayDaily = document.getElementById('btnPlayDailyCase');
+
+    if (cachedCasesList && cachedCasesList.length > 0) {
+        const dailyIdx = getDailyCaseIndex(cachedCasesList.length);
+        const dailyCase = cachedCasesList[dailyIdx];
+        if (dailyTitle && dailyCase) {
+            dailyTitle.textContent = `Case #${dailyIdx + 1}: ${dailyCase.title}`;
+        }
+        if (btnPlayDaily && dailyCase) {
+            btnPlayDaily.onclick = () => {
+                loadCaseContext(dailyCase.caseId);
+                const win = document.getElementById('win-leaderboard');
+                if (win) win.classList.add('hidden');
+                showDetectiveToast(`📅 Daily Challenge Activated: ${dailyCase.title}!`);
+            };
+        }
+    }
+
+    if (!tbody) return;
+
+    const { xp, solvedCases } = getPlayerProgress();
+    let playerBest = 950;
+    let playerRuns = [];
+    try {
+        playerRuns = JSON.parse(localStorage.getItem('qc_leaderboard_runs') || '[]');
+        if (playerRuns.length > 0) {
+            playerBest = Math.max(...playerRuns.map(r => r.score || 0));
+        }
+    } catch (e) {}
+
+    const entries = [
+        { rankNum: 1, name: "Capt. Raymond Vance", title: "⭐ MASTER", solved: 14, xp: 4850, bestScore: 990 },
+        { rankNum: 2, name: "Detective Miller (You)", title: xp > 1000 ? "🎖️ SENIOR" : "🔍 DETECTIVE", solved: solvedCases.length, xp: xp, bestScore: playerBest },
+        { rankNum: 3, name: "Officer Elena Ramirez", title: "🎖️ SENIOR", solved: 9, xp: 2600, bestScore: 920 },
+        { rankNum: 4, name: "Sgt. David Chen", title: "🔍 INVESTIGATOR", solved: 6, xp: 1850, bestScore: 875 },
+        { rankNum: 5, name: "Cadet Marcus Bell", title: "📋 PROBATIONARY", solved: 2, xp: 450, bestScore: 710 }
+    ];
+
+    entries.sort((a, b) => b.xp - a.xp);
+
+    tbody.innerHTML = '';
+    entries.forEach((e, idx) => {
+        const tr = document.createElement('tr');
+        const isUser = e.name.includes('(You)');
+        if (isUser) tr.style.background = '#e0f2fe';
+        tr.innerHTML = `
+            <td style="font-weight:bold;text-align:center;">${idx + 1}</td>
+            <td style="font-weight:${isUser ? 'bold' : 'normal'};">${esc(e.name)}</td>
+            <td><span style="font-size:10px;padding:1px 4px;background:#fef3c7;border:1px solid #f59e0b;border-radius:2px;">${e.title}</span></td>
+            <td style="text-align:center;">${e.solved}</td>
+            <td style="font-weight:bold;color:#0284c7;">${e.xp}</td>
+            <td style="font-weight:bold;color:#166534;">${e.bestScore}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }

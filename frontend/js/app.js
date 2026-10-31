@@ -237,18 +237,7 @@ function initDetectiveBadge() {
 window.inspectedCluesCount = 0;
 
 function isWindowLocked(winId) {
-    if (localStorage.getItem('qc_experienced_mode') === 'true') return null;
-    if (winId === 'win-search') {
-        const inspected = (window.inspectedCluesCount || 0) > 0;
-        if (!inspected && sessionQueriesCount === 0 && currentInvestigationStage < 2) {
-            return "🔒 Database Search Locked: Examine at least one physical clue in the Clues Locker before accessing mainframe databases.";
-        }
-    }
-    if (winId === 'win-arrest') {
-        if (sessionQueriesCount === 0 && currentInvestigationStage < 3) {
-            return "🔒 Warrant Filing Locked: Execute at least one SQL query in the mainframe to substantiate forensic evidence before interrogating or arresting suspects.";
-        }
-    }
+    // Open access for all investigative tools
     return null;
 }
 
@@ -312,6 +301,10 @@ function bringToFront(win) {
     window.highestZ = (window.highestZ || 100) + 1;
     win.style.zIndex = window.highestZ;
     win.classList.remove('hidden');
+    if (win.id === 'win-leaderboard') {
+        if (typeof renderLeaderboard === 'function') renderLeaderboard();
+        if (typeof renderAchievements === 'function') renderAchievements();
+    }
     updateTaskbar();
 }
 
@@ -2045,7 +2038,6 @@ if (btnSubmitAccusation) {
             return;
         }
         btnSubmitAccusation.disabled = true;
-        if (typeof completeObjective === 'function') completeObjective(4, 'Execute Warrant');
 
         try {
             const res = await apiFetch(`/cases/${caseId}/accusation`, {
@@ -2122,16 +2114,14 @@ if (btnSubmitAccusation) {
                 // Advance to Stage 3 Apprehended
                 updateInvestigationStage(3);
 
+                // Successfully apprehended suspect -> complete objective 4
+                if (typeof completeObjective === 'function') completeObjective(4, 'Execute Warrant');
+
                 // Save persistent progress and show debrief
                 saveCaseCompleted(caseId, data, sessionQueriesCount, sessionIncorrectAccusations);
 
                 const taskDebrief = document.getElementById('taskItemDebrief');
                 if (taskDebrief) taskDebrief.style.display = 'flex';
-            } else {
-                sessionIncorrectAccusations++;
-                window.caseWarrantAttemptsRemaining = Math.max(0, (window.caseWarrantAttemptsRemaining || 3) - 1);
-                if (typeof updateWarrantQuotaDisplay === 'function') updateWarrantQuotaDisplay();
-                if (typeof dispatchVanceMessage === 'function') dispatchVanceMessage(4);
             }
         } catch (e) {
             statusEl.textContent = `Network Error: ${e.message}`;
@@ -2490,9 +2480,6 @@ function saveCaseCompleted(cId, data, queryCount, incorrectCount) {
         };
         localStorage.setItem('qc_case_completed_' + cId, JSON.stringify(record));
 
-        const curXp = parseInt(localStorage.getItem('qc_player_xp') || '0', 10);
-        localStorage.setItem('qc_player_xp', String(curXp + 250));
-
         loadCaseList();
     } catch(e) {}
 }
@@ -2562,37 +2549,12 @@ function showCaseDebrief(data, queryCount) {
         savePlayerCaseSolve(caseId, rank, calculatedScore, awardedXp);
     }
 
-    if (sessionIncorrectAccusations > 2 || queryCount > 20) {
-        rank = 'C';
-        title = '📋 PROBATIONARY';
-        awardedXp = 75;
-    } else if (sessionIncorrectAccusations > 1 || queryCount > 12) {
-        rank = 'B';
-        title = '🔍 INVESTIGATOR';
-        awardedXp = 150;
-    } else if (sessionIncorrectAccusations > 0 || queryCount > 6 || totalSecs > 300) {
-        rank = 'A';
-        title = '🎖️ SENIOR DETECTIVE';
-        awardedXp = 250;
+    if (typeof evaluateAchievements === 'function') {
+        evaluateAchievements(caseId, rank, calculatedScore, totalQueries, totalSecs, totalDenied, hintsCount);
     }
 
     const hintsEl = document.getElementById('statHintsUsed');
     if (hintsEl) hintsEl.textContent = String(window.caseHintsUsed || 0);
-
-    // Hints penalty reduces rank
-    if (window.caseHintsPenalty >= 5) {
-        rank = 'C';
-        title = '📋 PROBATIONARY';
-        awardedXp = 50;
-    } else if (window.caseHintsPenalty >= 2 && rank === 'S') {
-        rank = 'A';
-        title = '🎖️ SENIOR DETECTIVE';
-        awardedXp = Math.min(awardedXp, 250);
-    } else if (window.caseHintsPenalty >= 1 && rank === 'S') {
-        rank = 'A';
-        title = '🎖️ SENIOR DETECTIVE';
-        awardedXp = Math.min(awardedXp, 250);
-    }
 
     if (typeof renderDebriefRedHerrings === 'function') renderDebriefRedHerrings(caseId);
 
@@ -3686,7 +3648,218 @@ function getDailyCaseIndex(totalCases) {
 
 function initDailyCaseAndLeaderboard() {
     renderLeaderboard();
+    renderAchievements();
 }
+
+// =========================================
+// ACHIEVEMENTS & COMMENDATIONS SYSTEM
+// =========================================
+
+const ACHIEVEMENTS_LIST = [
+    {
+        id: 'first_solve',
+        icon: '🎖️',
+        title: 'First Case Closed',
+        desc: 'Successfully apprehend the culprit in any criminal investigation.',
+        xp: 100
+    },
+    {
+        id: 'master_s',
+        icon: '⭐',
+        title: 'Master Detective',
+        desc: 'Earn an S-Rank on any case with a score of 850 or higher.',
+        xp: 200
+    },
+    {
+        id: 'clean_sheet',
+        icon: '🎯',
+        title: 'Clean Sheet',
+        desc: 'Execute an arrest warrant without a single rejected accusation.',
+        xp: 150
+    },
+    {
+        id: 'speed_demon',
+        icon: '⚡',
+        title: 'Rapid Response',
+        desc: 'Solve an entire case in under 2 minutes.',
+        xp: 150
+    },
+    {
+        id: 'sql_prodigy',
+        icon: '💻',
+        title: 'SQL Prodigy',
+        desc: 'Solve a case using 4 or fewer mainframe queries.',
+        xp: 150
+    },
+    {
+        id: 'no_hints',
+        icon: '🧠',
+        title: 'Pure Intuition',
+        desc: 'Solve a case without consulting Vance or using hints.',
+        xp: 100
+    },
+    {
+        id: 'daily_case',
+        icon: '📅',
+        title: 'Daily Duty',
+        desc: 'Inspect and complete the featured Daily Case.',
+        xp: 150
+    },
+    {
+        id: 'veteran',
+        icon: '🏆',
+        title: 'Precinct Veteran',
+        desc: 'Accumulate 1,000 or more Total XP across your career.',
+        xp: 250
+    }
+];
+
+function getUnlockedAchievements() {
+    try {
+        return JSON.parse(localStorage.getItem('qc_unlocked_achievements') || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveUnlockedAchievements(unlocked) {
+    localStorage.setItem('qc_unlocked_achievements', JSON.stringify(unlocked));
+}
+
+function evaluateAchievements(cId, rank, score, queries, secs, wrongAccusations, hints) {
+    let unlocked = getUnlockedAchievements();
+    let newlyUnlocked = [];
+
+    function grant(achId) {
+        if (!unlocked.includes(achId)) {
+            unlocked.push(achId);
+            newlyUnlocked.push(achId);
+        }
+    }
+
+    // 1. first_solve
+    grant('first_solve');
+
+    // 2. master_s
+    if (rank === 'S' || score >= 850) {
+        grant('master_s');
+    }
+
+    // 3. clean_sheet
+    if (wrongAccusations === 0) {
+        grant('clean_sheet');
+    }
+
+    // 4. speed_demon
+    if (secs < 120) {
+        grant('speed_demon');
+    }
+
+    // 5. sql_prodigy
+    if (queries <= 4) {
+        grant('sql_prodigy');
+    }
+
+    // 6. no_hints
+    if (hints === 0 && (!window.caseHintsPenalty || window.caseHintsPenalty === 0)) {
+        grant('no_hints');
+    }
+
+    // 7. daily_case
+    if (cachedCasesList && cachedCasesList.length > 0) {
+        const dailyIdx = getDailyCaseIndex(cachedCasesList.length);
+        const dailyCase = cachedCasesList[dailyIdx];
+        if (dailyCase && Number(dailyCase.caseId) === Number(cId)) {
+            grant('daily_case');
+        }
+    }
+
+    // 8. veteran
+    const { xp } = getPlayerProgress();
+    if (xp >= 1000) {
+        grant('veteran');
+    }
+
+    if (newlyUnlocked.length > 0) {
+        saveUnlockedAchievements(unlocked);
+        let bonusXp = 0;
+        newlyUnlocked.forEach(achId => {
+            const ach = ACHIEVEMENTS_LIST.find(a => a.id === achId);
+            if (ach) {
+                bonusXp += ach.xp;
+                setTimeout(() => {
+                    playSfx('stamp');
+                    showDetectiveToast(`🎖️ Commendation Unlocked: ${ach.title} (+${ach.xp} XP)!`);
+                }, 800);
+            }
+        });
+        if (bonusXp > 0) {
+            let curXp = parseInt(localStorage.getItem('qc_player_xp') || '0', 10);
+            localStorage.setItem('qc_player_xp', String(curXp + bonusXp));
+            updatePlayerProfileUI();
+        }
+    }
+
+    renderAchievements();
+}
+
+function renderAchievements() {
+    const grid = document.getElementById('achievementsGrid');
+    const countEl = document.getElementById('unlockedAchCount');
+    const pill = document.getElementById('achievementsProgressPill');
+    const unlocked = getUnlockedAchievements();
+
+    if (countEl) countEl.textContent = String(unlocked.length);
+    if (pill) pill.textContent = `${unlocked.length} / ${ACHIEVEMENTS_LIST.length} Unlocked`;
+
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    ACHIEVEMENTS_LIST.forEach(ach => {
+        const isUnlocked = unlocked.includes(ach.id);
+        const card = document.createElement('div');
+        card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+        card.innerHTML = `
+            <div class="achievement-badge">${ach.icon}</div>
+            <div class="achievement-info">
+                <div class="achievement-title">
+                    <span>${esc(ach.title)}</span>
+                    <span class="achievement-xp">+${ach.xp} XP</span>
+                </div>
+                <div class="achievement-desc">${esc(ach.desc)}</div>
+                <div class="achievement-status ${isUnlocked ? 'status-unlocked' : 'status-locked'}">
+                    ${isUnlocked ? '✓ UNLOCKED' : '🔒 LOCKED'}
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function switchLeaderboardTab(tabId) {
+    const tabs = ['tab-roster', 'tab-achievements', 'tab-guide'];
+    tabs.forEach(t => {
+        const el = document.getElementById(t);
+        if (el) el.style.display = (t === tabId) ? 'block' : 'none';
+    });
+    const btns = [
+        { id: 'tabBtnRoster', tab: 'tab-roster' },
+        { id: 'tabBtnAchievements', tab: 'tab-achievements' },
+        { id: 'tabBtnGuide', tab: 'tab-guide' }
+    ];
+    btns.forEach(b => {
+        const btn = document.getElementById(b.id);
+        if (btn) btn.classList.toggle('active', b.tab === tabId);
+    });
+    if (tabId === 'tab-achievements') {
+        renderAchievements();
+    }
+}
+
+window.switchLeaderboardTab = switchLeaderboardTab;
+window.renderAchievements = renderAchievements;
+window.evaluateAchievements = evaluateAchievements;
+
 
 function renderLeaderboard() {
     const tbody = document.getElementById('leaderboardTbody');
